@@ -1,0 +1,13 @@
+# Core (필수)
+python-telegram-bot==21.6
+httpx==0.27.0
+pyyaml==6.0.2
+pypdf==4.3.1
+
+# Optional: Docker 없이 직접 실행 시 .env 자동 로드
+# pip install python-dotenv
+# python-dotenv==1.0.1
+
+# Optional: MCP 서버 연동 (stdio / SSE transport)
+# pip install mcp
+# mcp==1.3.0

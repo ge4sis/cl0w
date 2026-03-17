@@ -1,0 +1,99 @@
+# cl0w config.yaml — Agent Gateway
+
+telegram:
+  mode: polling              # polling | webhook
+  # webhook_url: https://your.domain/webhook   # webhook 모드 시만 필요
+
+# 기본 프로바이더 (사용자가 /provider 로 변경 가능)
+default_provider: claude
+
+# 프로바이더 오류 시 자동 전환 체인
+fallback_chain:
+  - claude
+  - openai
+
+providers:
+  openai:
+    base_url: https://api.openai.com/v1
+    model: gpt-4o
+
+  claude:
+    base_url: https://api.anthropic.com/v1
+    model: claude-sonnet-4-5
+
+  gemini:
+    # Google 공식 OpenAI 호환 엔드포인트 — 별도 어댑터 불필요
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-1.5-pro
+
+  lmstudio:
+    # Docker: host.docker.internal  /  Apple Container: host.internal
+    base_url: http://host.docker.internal:1234/v1
+    model: local-model
+
+  ollama:
+    base_url: http://host.docker.internal:11434/v1
+    model: llama3
+
+# 사용자별 개별 설정 (선택)
+# users:
+#   123456789:
+#     default_provider: claude
+#     rate_limit: 30
+#   987654321:
+#     default_provider: ollama
+#     rate_limit: 10
+
+# 전역 Rate Limit (msg/min per user)
+rate_limit: 20
+
+# 입력 메시지 최대 길이
+max_input_chars: 4096
+
+# 대화 세션
+session:
+  persist: true          # false 면 재시작 시 기록 소멸
+  max_turns: 50          # 초과 시 오래된 턴부터 삭제
+  dir: ./sessions
+
+# Tool 플러그인
+tools_dir: ./tools
+hot_reload_interval: 5   # 초 — watchdog 없이 mtime 폴링
+
+# 파일 처리
+file:
+  max_size_mb: 20
+  max_text_chars: 50000
+  pdf_max_pages: 100
+  pdf_support: true
+
+# 관찰가능성
+observability:
+  log_level: info          # debug | info | warn | error
+  # admin_chat_id: 123456789   # 오류 알림 받을 관리자 Telegram chat_id
+
+# ── MCP 서버 연동 (선택) ─────────────────────────────────────────────────────
+# 필요 패키지: pip install mcp
+# 봇 시작 시 자동 연결 → 도구 자동 등록 → 연결 끊기면 10초 후 자동 재시도
+# 등록된 MCP 도구는 Python 파일 도구와 동일하게 LLM이 자동 호출
+#
+# mcp_servers:
+#
+#   # 예시 1: stdio — MCP 서버를 서브프로세스로 실행
+#   filesystem:
+#     transport: stdio
+#     command: uvx
+#     args: ["mcp-server-filesystem", "/tmp"]
+#
+#   # 예시 2: stdio — Python으로 직접 작성한 MCP 서버
+#   my_server:
+#     transport: stdio
+#     command: python
+#     args: ["my_mcp_server.py"]
+#     env:
+#       MY_API_KEY: "secret"
+#
+#   # 예시 3: SSE — 이미 실행 중인 MCP HTTP 서버에 연결
+#   remote_tools:
+#     transport: sse
+#     url: http://localhost:3000/sse
