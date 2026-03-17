@@ -15,7 +15,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Lines of Code](https://img.shields.io/badge/bot.py-681%20lines-f59e0b?style=flat-square)]()
+[![Lines of Code](https://img.shields.io/badge/bot.py-704%20lines-f59e0b?style=flat-square)]()
 [![Dependencies](https://img.shields.io/badge/dependencies-4%2B-a855f7?style=flat-square)]()
 [![Container](https://img.shields.io/badge/container-ready-0ea5e9?style=flat-square&logo=docker&logoColor=white)]()
 
@@ -32,7 +32,7 @@ Most agent frameworks are bloated, insecure, and painful to configure.
 
 | | OpenClaw | cl0w |
 |---|---|---|
-| Core logic | multiple files, 2000+ lines | **single file, 681 lines** |
+| Core logic | multiple files, 2000+ lines | **single file, 704 lines** |
 | Dependencies | 15+ | **4 core + optional** |
 | Security | process-level | **container-isolated, read-only rootfs** |
 | Interface | web UI / REST | **Telegram (zero port exposure)** |
@@ -400,7 +400,7 @@ notepad persona.md    # Windows
 
 ```
 cl0w/
-├── bot.py              ← entire gateway (681 lines)
+├── bot.py              ← entire gateway (704 lines)
 ├── config.yaml         ← all settings (providers, MCP servers, limits)
 ├── persona.md          ← active persona (hot-reloaded)
 ├── .env                ← secrets (never committed)
@@ -548,7 +548,7 @@ providers:
 ## Contributing
 
 1. Fork → branch → PR
-2. Keep `bot.py` under 700 lines
+2. Keep `bot.py` under 750 lines
 3. New features go in `tools/` when possible
 4. Every PR needs a one-line "why" in the description
 

@@ -417,10 +417,34 @@ async def llm_stream(uid: int, history: list[dict]) -> AsyncGenerator[dict, None
     raise RuntimeError("모든 프로바이더가 응답하지 않습니다")
 
 # ── Streaming Reply ───────────────────────────────────────────────────────────
+_CHUNK = 4000  # Telegram max message length (hard limit 4096, use 4000 for safety)
+
 async def stream_reply(u: Update, uid: int, history: list[dict]) -> str:
     """Stream LLM reply to Telegram. Mutates history. Returns final text."""
     sent = await u.message.reply_text("💭 …")
-    text, last_edit, tc_acc = "", 0.0, {}
+    text        = ""          # full accumulated text
+    window      = ""          # text visible in current Telegram message
+    last_edit   = 0.0
+    tc_acc: dict = {}
+
+    async def _flush_window(final: bool = False) -> None:
+        """Edit current message with latest window content."""
+        nonlocal last_edit
+        display = window or "…"
+        if final or time.time() - last_edit >= 1.0:
+            try:
+                await sent.edit_text(display)
+                last_edit = time.time()
+            except Exception:
+                pass
+
+    async def _next_message() -> None:
+        """Close current message and open a new one for overflow."""
+        nonlocal sent, window, last_edit
+        await _flush_window(final=True)
+        sent = await u.message.reply_text("💭 …")
+        window = ""
+        last_edit = 0.0
 
     try:
         async for ch in llm_stream(uid, history):
@@ -436,23 +460,22 @@ async def stream_reply(u: Update, uid: int, history: list[dict]) -> str:
 
             # Stream text with 1-second throttle (Telegram edit limit)
             if chunk := delta.get("content") or "":
-                text += chunk
-                if time.time() - last_edit >= 1.0:
-                    try:
-                        await sent.edit_text(text[-4000:] or "…")
-                        last_edit = time.time()
-                    except Exception:
-                        pass
+                text   += chunk
+                window += chunk
+                # Overflow: current message full → spill into a new message
+                while len(window) > _CHUNK:
+                    overflow = window[_CHUNK:]
+                    await _flush_window(final=True)
+                    sent = await u.message.reply_text("💭 …")
+                    window = overflow
+                    last_edit = 0.0
+                await _flush_window()
 
             if ch.get("finish_reason") in ("stop", "tool_calls", "end_turn"):
                 break
 
-        # Final flush
-        if text:
-            try:
-                await sent.edit_text(text[-4000:])
-            except Exception:
-                pass
+        # Final flush — send any remaining window content
+        await _flush_window(final=True)
 
         # Execute tool calls → recurse for final answer
         if tc_acc:

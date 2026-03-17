@@ -15,7 +15,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Lines of Code](https://img.shields.io/badge/bot.py-681줄-f59e0b?style=flat-square)]()
+[![Lines of Code](https://img.shields.io/badge/bot.py-704줄-f59e0b?style=flat-square)]()
 [![Dependencies](https://img.shields.io/badge/의존성-4개%2B-a855f7?style=flat-square)]()
 [![Container](https://img.shields.io/badge/컨테이너-ready-0ea5e9?style=flat-square&logo=docker&logoColor=white)]()
 
@@ -32,7 +32,7 @@
 
 | | OpenClaw | cl0w |
 |---|---|---|
-| 핵심 로직 | 여러 파일, 2000줄 이상 | **단일 파일, 681줄** |
+| 핵심 로직 | 여러 파일, 2000줄 이상 | **단일 파일, 704줄** |
 | 의존성 | 15개 이상 | **4개 코어 + 선택** |
 | 보안 | 프로세스 수준 | **컨테이너 격리, read-only 파일시스템** |
 | 인터페이스 | 웹 UI / REST | **Telegram (포트 개방 없음)** |
@@ -402,7 +402,7 @@ notepad persona.md     # Windows
 
 ```
 cl0w/
-├── bot.py              ← 게이트웨이 전체 (681줄)
+├── bot.py              ← 게이트웨이 전체 (704줄)
 ├── config.yaml         ← 모든 설정 (프로바이더, MCP 서버, 한도)
 ├── persona.md          ← 활성 Persona (핫 리로드)
 ├── .env                ← 시크릿 (절대 커밋 금지)
@@ -567,7 +567,7 @@ Telegram으로 파일을 보내면 cl0w 가 자동으로 처리합니다.
 ## 기여하기
 
 1. Fork → 브랜치 → PR
-2. `bot.py` 는 700줄 이내로 유지
+2. `bot.py` 는 750줄 이내로 유지
 3. 새 기능은 가능하면 `tools/` 에 추가
 4. PR 설명에 한 줄짜리 "왜 필요한가" 필수
 
