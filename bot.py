@@ -25,7 +25,7 @@ from telegram.ext import (
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
-CFG: dict = yaml.safe_load(open("config.yaml")) if Path("config.yaml").exists() else {}
+CFG: dict = yaml.safe_load(open("config.yaml", encoding="utf-8")) if Path("config.yaml").exists() else {}
 _obs = CFG.get("observability", {})
 logging.basicConfig(
     format='{"ts":"%(asctime)s","lvl":"%(levelname)s","msg":"%(message)s"}',
