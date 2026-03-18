@@ -435,7 +435,7 @@ observability:
 | MCP 클라이언트 | **mcp** *(선택)* | stdio + SSE 트랜스포트 |
 | .env 로더 | **python-dotenv** *(선택)* | Docker 없이 직접 실행 시 필요 |
 
-**코드량 상한: `bot.py` 단일 파일 700줄 이하** (현재 681줄)
+**코드량 상한: `bot.py` 단일 파일 750줄 이하** (현재 702줄)
 
 > pypdf는 PDF 처리가 필요 없는 배포에서는 제거 가능 (`file.pdf_support: false` 시 import 생략)
 
@@ -448,6 +448,7 @@ observability:
 | 명령어 | 동작 |
 |--------|------|
 | `(일반 텍스트)` | 현재 프로바이더로 메시지 전송, 응답 반환 |
+| `/help` | 사용 가능한 명령어 목록 표시 |
 | `/provider <name>` | 프로바이더 전환 (예: `/provider lmstudio`) |
 | `/tools` | 현재 등록된 Tool 목록 출력 |
 | `/reset` | 현재 대화 세션(컨텍스트) 초기화 |

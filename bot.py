@@ -5,7 +5,7 @@ Deps (required): python-telegram-bot httpx pyyaml pypdf
 Deps (optional): python-dotenv  — .env auto-load when running without Docker
                  mcp             — MCP server client (stdio / SSE transport)
 """
-import asyncio, base64, importlib.util, io, json, logging, os, time
+import asyncio, base64, importlib.util, io, json, logging, os, sys, time
 from collections import defaultdict
 from pathlib import Path
 from typing import AsyncGenerator
@@ -18,6 +18,15 @@ except ImportError:
     pass
 
 import httpx, yaml
+
+# ── Shared HTTP client (connection reuse across LLM requests) ─────────────────
+_http: httpx.AsyncClient | None = None
+
+def http() -> httpx.AsyncClient:
+    global _http
+    if _http is None or _http.is_closed:
+        _http = httpx.AsyncClient(timeout=90)
+    return _http
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -73,9 +82,7 @@ def sess_put(uid: int, h: list[dict]):
 def sess_clear(uid: int):
     _mem[uid] = []
     if SESS_PERSIST:
-        p = SESS_DIR / f"{uid}.json"
-        if p.exists():
-            p.unlink()
+        (SESS_DIR / f"{uid}.json").unlink(missing_ok=True)
 
 # ── Persona ───────────────────────────────────────────────────────────────────
 _pfile = "persona.md"
@@ -106,6 +113,7 @@ TOOLS_DIR = Path(CFG.get("tools_dir", "./tools"))
 TOOLS_DIR.mkdir(exist_ok=True)
 HOT_IV = CFG.get("hot_reload_interval", 5)
 _tools: dict[str, dict] = {}
+_tool_mtimes: dict[Path, float] = {}  # O(1) path→mtime lookup
 _last_scan = 0.0
 
 def tools_scan():
@@ -123,13 +131,14 @@ def tools_scan():
 
     # Unload removed files
     for n in [n for n, t in list(_tools.items()) if t["_p"] not in files]:
+        _tool_mtimes.pop(_tools[n]["_p"], None)
         del _tools[n]
         log.info(f"tool removed: {n}")
 
     # Load new / changed files
     for p in files:
         mt = p.stat().st_mtime
-        if any(t["_p"] == p and t["_mt"] == mt for t in _tools.values()):
+        if _tool_mtimes.get(p) == mt:  # O(1) — no linear scan
             continue
         try:
             # Use dotted relative path as module name to avoid name collisions
@@ -142,7 +151,6 @@ def tools_scan():
 
             # Add the tool's own directory to sys.path so it can import
             # sibling helper files (e.g. from utils import ...) without issues
-            import sys
             parent_str = str(p.parent)
             path_added = parent_str not in sys.path
             if path_added:
@@ -156,6 +164,7 @@ def tools_scan():
             if hasattr(mod, "TOOL_SCHEMA") and hasattr(mod, "run"):
                 n = mod.TOOL_SCHEMA["name"]
                 _tools[n] = {"s": mod.TOOL_SCHEMA, "fn": mod.run, "_p": p, "_mt": mt}
+                _tool_mtimes[p] = mt
                 log.info(f"tool loaded: {n} (from {rel})")
         except Exception as e:
             log.error(f"tool error {p}: {e}")
@@ -163,7 +172,7 @@ def tools_scan():
 def tools_oai() -> list[dict]:
     """Return all tools (Python plugins + MCP servers) in OpenAI function format."""
     tools_scan()
-    python = [
+    return [
         {"type": "function", "function": {
             "name": t["s"]["name"],
             "description": t["s"].get("description", ""),
@@ -172,8 +181,7 @@ def tools_oai() -> list[dict]:
             })),
         }}
         for t in _tools.values()
-    ]
-    return python + _mcp_oai()   # merge Python tools + MCP server tools
+    ] + _mcp_oai()
 
 async def tool_run(name: str, args: dict) -> str:
     tools_scan()
@@ -190,18 +198,6 @@ async def tool_run(name: str, args: dict) -> str:
         return f"tool error: {e}"
 
 # ── MCP Client ────────────────────────────────────────────────────────────────
-# Optional — requires: pip install mcp
-# Config: add `mcp_servers:` block to config.yaml (see example below)
-#
-# mcp_servers:
-#   filesystem:                          # server nickname
-#     transport: stdio
-#     command: uvx
-#     args: ["mcp-server-filesystem", "/tmp"]
-#   my_api:
-#     transport: sse
-#     url: http://localhost:3000/sse
-
 _mcp_sessions: dict[str, object] = {}         # name → ClientSession
 _mcp_tool_meta: dict[str, dict] = {}          # "mcp_{srv}__{tool}" → {server, tool}
 _mcp_tasks: dict[str, "asyncio.Task"] = {}   # name → background task
@@ -220,7 +216,6 @@ def _mcp_oai() -> list[dict]:
 
 async def _mcp_discover(name: str, sess) -> None:
     result = await sess.list_tools()
-    added = 0
     for t in result.tools:
         key = f"mcp_{name}__{t.name}"
         _mcp_tool_meta[key] = {
@@ -233,8 +228,7 @@ async def _mcp_discover(name: str, sess) -> None:
                 else {"type": "object", "properties": {}}
             ),
         }
-        added += 1
-    log.info(f"MCP {name}: {added} tools discovered")
+    log.info(f"MCP {name}: {len(result.tools)} tools discovered")
 
 async def _mcp_call(key: str, args: dict) -> str:
     meta = _mcp_tool_meta[key]
@@ -248,10 +242,19 @@ async def _mcp_call(key: str, args: dict) -> str:
     except Exception as e:
         return f"MCP call error: {e}"
 
+async def _mcp_connect(name: str, r, w) -> None:
+    """Shared connect logic for both stdio and SSE transports."""
+    from mcp import ClientSession
+    async with ClientSession(r, w) as sess:
+        await sess.initialize()
+        _mcp_sessions[name] = sess
+        await _mcp_discover(name, sess)
+        await asyncio.sleep(float("inf"))   # keep alive
+
 async def _mcp_session_task(name: str, cfg: dict) -> None:
     """Long-running task: connect → discover tools → keep alive → auto-reconnect."""
     try:
-        from mcp import ClientSession, StdioServerParameters
+        from mcp import StdioServerParameters
     except ImportError:
         log.error("MCP support requires: pip install mcp")
         return
@@ -266,20 +269,12 @@ async def _mcp_session_task(name: str, cfg: dict) -> None:
                     env=cfg.get("env"),
                 )
                 async with stdio_client(params) as (r, w):
-                    async with ClientSession(r, w) as sess:
-                        await sess.initialize()
-                        _mcp_sessions[name] = sess
-                        await _mcp_discover(name, sess)
-                        await asyncio.sleep(float("inf"))   # keep alive
+                    await _mcp_connect(name, r, w)
 
             elif cfg.get("transport") == "sse":
                 from mcp.client.sse import sse_client
                 async with sse_client(cfg["url"]) as (r, w):
-                    async with ClientSession(r, w) as sess:
-                        await sess.initialize()
-                        _mcp_sessions[name] = sess
-                        await _mcp_discover(name, sess)
-                        await asyncio.sleep(float("inf"))   # keep alive
+                    await _mcp_connect(name, r, w)
 
             else:
                 log.error(f"MCP {name}: unknown transport '{cfg.get('transport')}'")
@@ -290,7 +285,6 @@ async def _mcp_session_task(name: str, cfg: dict) -> None:
         except Exception as e:
             log.warning(f"MCP {name} disconnected: {e} — retry in 10s")
             _mcp_sessions.pop(name, None)
-            # Remove stale tools for this server
             stale = [k for k, v in _mcp_tool_meta.items() if v["server"] == name]
             for k in stale:
                 del _mcp_tool_meta[k]
@@ -394,22 +388,21 @@ async def llm_stream(uid: int, history: list[dict]) -> AsyncGenerator[dict, None
         if tools:
             payload.update({"tools": tools, "tool_choice": "auto"})
         try:
-            async with httpx.AsyncClient(timeout=90) as c:
-                async with c.stream(
-                    "POST", f"{pc['base_url']}/chat/completions",
-                    headers=headers, json=payload
-                ) as r:
-                    r.raise_for_status()
-                    async for line in r.aiter_lines():
-                        if not line.startswith("data:"):
-                            continue
-                        d = line[5:].strip()
-                        if d == "[DONE]":
-                            return
-                        try:
-                            yield json.loads(d)["choices"][0]
-                        except Exception:
-                            continue
+            async with http().stream(
+                "POST", f"{pc['base_url']}/chat/completions",
+                headers=headers, json=payload
+            ) as r:
+                r.raise_for_status()
+                async for line in r.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    d = line[5:].strip()
+                    if d == "[DONE]":
+                        return
+                    try:
+                        yield json.loads(d)["choices"][0]
+                    except Exception:
+                        continue
             return
         except Exception as e:
             log.warning(f"provider {pname}: {e}")
@@ -437,14 +430,6 @@ async def stream_reply(u: Update, uid: int, history: list[dict]) -> str:
                 last_edit = time.time()
             except Exception:
                 pass
-
-    async def _next_message() -> None:
-        """Close current message and open a new one for overflow."""
-        nonlocal sent, window, last_edit
-        await _flush_window(final=True)
-        sent = await u.message.reply_text("💭 …")
-        window = ""
-        last_edit = 0.0
 
     try:
         async for ch in llm_stream(uid, history):
@@ -552,14 +537,26 @@ def file_block(data: bytes, name: str, mime: str = "") -> dict:
     raise ValueError(f"지원하지 않는 형식 ({suf or mime}). Tool을 추가하면 처리 가능합니다.")
 
 # ── Telegram Handlers ─────────────────────────────────────────────────────────
+HELP_TEXT = (
+    "*cl0w* 사용 가능한 명령어:\n\n"
+    "/help — 명령어 목록 표시\n"
+    "/status — 현재 프로바이더 · 모델 · Persona 확인\n"
+    "/provider `[이름]` — LLM 프로바이더 전환\n"
+    "/tools — 로드된 Tool 목록 확인\n"
+    "/persona `[이름]` — Persona 확인 또는 전환\n"
+    "/reset — 현재 세션(대화 기록) 초기화"
+)
+
 async def on_start(u: Update, _: ContextTypes.DEFAULT_TYPE):
     if not await guard(u): return
     await u.message.reply_text(
-        "안녕하세요! *cl0w* 에이전트입니다.\n"
-        "/status — 현재 상태\n/provider — LLM 전환\n/tools — Tool 목록\n"
-        "/persona — Persona 확인\n/reset — 세션 초기화",
+        "안녕하세요! *cl0w* 에이전트입니다.\n\n" + HELP_TEXT,
         parse_mode=ParseMode.MARKDOWN,
     )
+
+async def on_help(u: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(u): return
+    await u.message.reply_text(HELP_TEXT, parse_mode=ParseMode.MARKDOWN)
 
 async def on_status(u: Update, _: ContextTypes.DEFAULT_TYPE):
     if not await guard(u): return
@@ -567,7 +564,7 @@ async def on_status(u: Update, _: ContextTypes.DEFAULT_TYPE):
     await u.message.reply_text(
         f"*프로바이더*: {pn} (`{pc.get('model', '?')}`)\n"
         f"*Persona*: `{Path(_pfile).stem}`\n"
-        f"*Tools*: {len(tools_oai())}개 로드됨",
+        f"*Tools*: {len(_tools) + len(_mcp_tool_meta)}개 로드됨",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -677,6 +674,7 @@ def main():
 
     for cmd, fn in [
         ("start",    on_start),
+        ("help",     on_help),
         ("status",   on_status),
         ("provider", on_provider),
         ("tools",    on_tools),

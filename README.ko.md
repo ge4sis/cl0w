@@ -15,7 +15,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Lines of Code](https://img.shields.io/badge/bot.py-704줄-f59e0b?style=flat-square)]()
+[![Lines of Code](https://img.shields.io/badge/bot.py-702줄-f59e0b?style=flat-square)]()
 [![Dependencies](https://img.shields.io/badge/의존성-4개%2B-a855f7?style=flat-square)]()
 [![Container](https://img.shields.io/badge/컨테이너-ready-0ea5e9?style=flat-square&logo=docker&logoColor=white)]()
 
@@ -32,7 +32,7 @@
 
 | | OpenClaw | cl0w |
 |---|---|---|
-| 핵심 로직 | 여러 파일, 2000줄 이상 | **단일 파일, 704줄** |
+| 핵심 로직 | 여러 파일, 2000줄 이상 | **단일 파일, 702줄** |
 | 의존성 | 15개 이상 | **4개 코어 + 선택** |
 | 보안 | 프로세스 수준 | **컨테이너 격리, read-only 파일시스템** |
 | 인터페이스 | 웹 UI / REST | **Telegram (포트 개방 없음)** |
@@ -402,7 +402,7 @@ notepad persona.md     # Windows
 
 ```
 cl0w/
-├── bot.py              ← 게이트웨이 전체 (704줄)
+├── bot.py              ← 게이트웨이 전체 (702줄)
 ├── config.yaml         ← 모든 설정 (프로바이더, MCP 서버, 한도)
 ├── persona.md          ← 활성 Persona (핫 리로드)
 ├── .env                ← 시크릿 (절대 커밋 금지)
@@ -429,6 +429,7 @@ cl0w/
 | 명령어 | 동작 |
 |--------|------|
 | *(일반 텍스트)* | 현재 LLM과 대화 |
+| `/help` | 사용 가능한 명령어 목록 표시 |
 | `/provider <이름>` | LLM 전환 (`claude`, `openai`, `ollama` 등) |
 | `/tools` | 활성화된 Tool 목록 |
 | `/persona` | 현재 Persona 내용 확인 |
