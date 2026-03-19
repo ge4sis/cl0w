@@ -218,7 +218,7 @@ async def _mcp_init(app):
     asyncio.create_task(_mcp_config_watcher())
 
 # ── LLM Router ────────────────────────────────────────────────────────────────
-_uprov, _EXTRA_H, _ENV_KEYS = {}, {"claude": {"anthropic-version": "2023-06-01"}}, {"openai": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY"}
+_uprov, _ENV_KEYS = {}, {"openai": "OPENAI_API_KEY", "gemini": "GEMINI_API_KEY"}
 def prov_for(uid: int) -> tuple[str, dict]:
     n = _uprov.get(uid) or CFG.get("users",{}).get(uid,{}).get("default_provider") or CFG.get("default_provider","gemini")
     return n, CFG.get("providers", {}).get(n, {})
@@ -233,7 +233,7 @@ async def llm_stream(uid: int, history: list[dict]) -> AsyncGenerator[dict, None
         pc = CFG.get("providers", {}).get(pname, {})
         if not pc.get("base_url"): continue
         key = os.environ.get(_ENV_KEYS.get(pname, ""), "")
-        headers = {"Content-Type": "application/json", **({"Authorization": f"Bearer {key}"} if key else {}), **_EXTRA_H.get(pname, {})}
+        headers = {"Content-Type": "application/json", **({"Authorization": f"Bearer {key}"} if key else {})}
         payload = {"model": pc.get("model", "gpt-4o"), "messages": msgs, "stream": True, **({"tools": tools, "tool_choice": "auto"} if tools else {})}
         try:
             async with http().stream("POST", f"{pc['base_url']}/chat/completions", headers=headers, json=payload) as r:

@@ -5,27 +5,19 @@ telegram:
   # webhook_url: https://your.domain/webhook   # webhook 모드 시만 필요
 
 # 기본 프로바이더 (사용자가 /provider 로 변경 가능)
-default_provider: gemini
+default_provider: openai
 
 # 프로바이더 오류 시 자동 전환 체인
 fallback_chain:
-  - gemini
-  - claude
   - openai
+  - lmstudio
+  - ollama
+  - gemini
 
 providers:
   openai:
     base_url: https://api.openai.com/v1
     model: gpt-4o
-
-  claude:
-    base_url: https://api.anthropic.com/v1
-    model: claude-3-7-sonnet-20250219
-
-  gemini:
-    # Google 공식 OpenAI 호환 엔드포인트 — 별도 어댑터 불필요
-    base_url: https://generativelanguage.googleapis.com/v1beta/openai
-    model: gemini-2.0-flash
 
   lmstudio:
     base_url: http://localhost:1234/v1
@@ -34,6 +26,17 @@ providers:
   ollama:
     base_url: http://localhost:11434/v1
     model: llama3.3
+
+  gemini:
+    # Google 공식 OpenAI 호환 엔드포인트 — 별도 어댑터 불필요
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-2.0-flash
+
+  # claude:
+  #   # Anthropic 네이티브 API는 OpenAI와 호환되지 않으므로, 
+  #   # 호환 프록시(LiteLLM 등)를 사용하는 경우에만 활성화하십시오.
+  #   base_url: http://localhost:4000/v1
+  #   model: claude-3-7-sonnet-20250219
 
 # 사용자별 개별 설정 (선택)
 # users:

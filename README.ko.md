@@ -50,8 +50,8 @@
 
 | 프로바이더 | 유형 |
 |----------|------|
-| Anthropic Claude (3.7 Sonnet / 3.5 Opus) | 클라우드 |
-| Google Gemini (2.0 Flash / Pro) - **기본값** | 클라우드 |
+| OpenAI (GPT-4o, o-series) - **기본값** | 클라우드 |
+| Google Gemini (2.0 Flash / Pro) | 클라우드 |
 | LM Studio | 로컬 |
 | Ollama | 로컬 |
 | 기타 OpenAI 호환 엔드포인트 | 커스텀 |
@@ -339,7 +339,7 @@ Crow:  🔧 web_search({"query": "Acme Corp 최근 뉴스 2025"})
 ### 1. 클론 및 설정
 ```bash
 git clone https://github.com/your-org/cl0w.git && cd cl0w
-cp .env.example .env   # 토큰 입력
+cp .env.example .env   # OPENAI_API_KEY 등 입력
 ```
 
 ### 2. 실행
@@ -396,7 +396,7 @@ cl0w/
 |--------|------|
 | *(일반 텍스트)* | 현재 LLM과 대화 |
 | `/help` | 사용 가능한 명령어 목록 표시 |
-| `/provider <이름>` | LLM 프로바이더 확인 및 전환 (`gemini`, `claude`, `openai`, …) |
+| `/provider <이름>` | LLM 프로바이더 확인 및 전환 (`openai`, `lmstudio`, `gemini`, …) |
 | `/tools` | 활성화된 Tool 목록 |
 | `/persona` | 현재 Persona 내용 확인 |
 | `/persona <이름>` | Persona 전환 (예: `/persona technical`) |
@@ -411,13 +411,19 @@ cl0w/
 `config.yaml` 에서 모든 것을 제어합니다. 자주 쓰는 옵션:
 
 ```yaml
-default_provider: claude
+default_provider: openai
 
 fallback_chain:         # 자동 폴백 순서
-  - claude
   - openai
+  - lmstudio
+  - ollama
+  - gemini
 
 providers:
+  lmstudio:
+    base_url: http://localhost:1234/v1
+    model: local-model
+
   ollama:
     base_url: http://localhost:11434/v1
     model: llama3
@@ -446,7 +452,15 @@ mcp_servers:
 
 ## 로컬 LLM 연결
 
-**Ollama**
+**LM Studio (Local)**
+```yaml
+providers:
+  lmstudio:
+    base_url: http://localhost:1234/v1
+    model: local-model
+```
+
+**Ollama (Local)**
 ```bash
 # 먼저 모델 pull
 ollama pull llama3
@@ -457,14 +471,6 @@ providers:
   ollama:
     base_url: http://localhost:11434/v1
     model: llama3
-```
-
-**LM Studio**
-```yaml
-providers:
-  lmstudio:
-    base_url: http://localhost:1234/v1
-    model: local-model
 ```
 
 ---
@@ -486,16 +492,16 @@ Telegram으로 파일을 보내면 cl0w 가 자동으로 처리합니다.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  직접 프로세스 실행 (격리된 쉘 환경)             │
+│  직접 프로세스 실행 (격리된 쉘 환경)            │
 │                                                 │
-│  • 인바운드 포트 없음 (polling 전용)             │
-│  • 시크릿은 환경변수(.env) 사용                  │
-│  • Telegram user_id allowlist                  │
+│  • 인바운드 포트 없음 (polling 전용)            │
+│  • 시크릿은 환경변수(.env) 사용                 │
+│  • Telegram user_id allowlist                   │
 │  • 사용자별 Rate Limit                          │
 │  • Tool 실행 타임아웃 (30초)                    │
 │  • 파일 크기 상한 (20MB)                        │
 │  • 재귀 루프 제한 (10회)                        │
-│  • 위험 도구 실행 전 확인 (사용자 승인 필요)     │
+│  • 위험 도구 실행 전 확인 (사용자 승인 필요)    │
 └─────────────────────────────────────────────────┘
 ```
 

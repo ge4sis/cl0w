@@ -50,10 +50,10 @@ All providers speak OpenAI-compatible REST, so a single `httpx` client handles e
 
 | Provider | Type |
 |----------|------|
-| OpenAI (GPT-4o, o-series) | Cloud |
-| Anthropic Claude (3.7 Sonnet / 3.5 Opus) | Cloud |
+| OpenAI (GPT-4o, o-series) - **Default** | Cloud |
 | Google Gemini (2.0 Flash / Pro) | Cloud |
 | LM Studio | Local |
+| Ollama | Local |
 | Any OpenAI-compatible endpoint | Custom |
 
 Switch providers mid-conversation with `/provider claude`. Automatic fallback chain if a provider goes down.
@@ -339,7 +339,7 @@ Every new capability is a single Python file. The agent assembles the pieces.
 ### 1. Clone & Setup
 ```bash
 git clone https://github.com/your-org/cl0w.git && cd cl0w
-cp .env.example .env   # fill in your tokens
+cp .env.example .env   # fill in your tokens (OPENAI_API_KEY etc.)
 ```
 
 ### 2. Run
@@ -395,7 +395,7 @@ cl0w/
 |---------|-------------|
 | *(any text)* | Chat with the current LLM |
 | `/help` | Show available commands |
-| `/provider <name>` | Show or Switch LLM provider (`gemini`, `claude`, `openai`, …) |
+| `/provider <name>` | Show or Switch LLM provider (`openai`, `lmstudio`, `gemini`, …) |
 | `/tools` | List active tools |
 | `/persona` | Show current persona |
 | `/persona <name>` | Switch persona (e.g. `/persona technical`) |
@@ -410,13 +410,19 @@ cl0w/
 `config.yaml` controls everything. The most useful knobs:
 
 ```yaml
-default_provider: claude
+default_provider: openai
 
 fallback_chain:       # auto-failover order
-  - claude
   - openai
+  - lmstudio
+  - ollama
+  - gemini
 
 providers:
+  lmstudio:
+    base_url: http://localhost:1234/v1
+    model: local-model
+
   ollama:
     base_url: http://localhost:11434/v1
     model: llama3
@@ -445,21 +451,21 @@ mcp_servers:
 
 ## Adding a Local LLM
 
-**Ollama**
+**LM Studio (Local)**
+```yaml
+providers:
+  lmstudio:
+    base_url: http://localhost:1234/v1
+    model: local-model
+```
+
+**Ollama (Local)**
 ```yaml
 # config.yaml
 providers:
   ollama:
     base_url: http://host.docker.internal:11434/v1
     model: llama3       # any model you've pulled
-```
-
-**LM Studio**
-```yaml
-providers:
-  lmstudio:
-    base_url: http://host.docker.internal:1234/v1
-    model: local-model
 ```
 
 > `host.docker.internal` resolves to your host machine from inside the container.
@@ -471,7 +477,7 @@ providers:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Direct Process Execution (Isolated Shell)       │
+│  Direct Process Execution (Isolated Shell)      │
 │                                                 │
 │  • no inbound ports (polling only)              │
 │  • secrets via env (dot-env)                    │

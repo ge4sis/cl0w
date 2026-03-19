@@ -29,6 +29,8 @@ os.chdir(ROOT)
 def _make_telegram_stub():
     telegram = types.ModuleType("telegram")
     telegram.Update = MagicMock()
+    telegram.InlineKeyboardButton = MagicMock()
+    telegram.InlineKeyboardMarkup = MagicMock()
     telegram.constants = types.ModuleType("telegram.constants")
     telegram.constants.ParseMode = MagicMock()
 
@@ -36,6 +38,7 @@ def _make_telegram_stub():
     ext.Application = MagicMock()
     ext.CommandHandler = MagicMock()
     ext.MessageHandler = MagicMock()
+    ext.CallbackQueryHandler = MagicMock()
     ext.filters = MagicMock()
     ext.ContextTypes = MagicMock()
 
@@ -61,10 +64,10 @@ class TestDeepMerge:
         assert result == {"a": 1, "b": 99, "c": 3}
 
     def test_nested_merge(self):
-        base = {"providers": {"claude": {"model": "old"}, "openai": {"model": "gpt-4o"}}}
-        override = {"providers": {"claude": {"model": "new"}}}
+        base = {"providers": {"gemini": {"model": "old"}, "openai": {"model": "gpt-4o"}}}
+        override = {"providers": {"gemini": {"model": "new"}}}
         result = bot._deep_merge(base, override)
-        assert result["providers"]["claude"]["model"] == "new"
+        assert result["providers"]["gemini"]["model"] == "new"
         assert result["providers"]["openai"]["model"] == "gpt-4o"  # 유지됨
 
     def test_override_wins_on_non_dict(self):
@@ -93,17 +96,17 @@ class TestDeepMerge:
 # 2. Config 로딩 (config.local.yaml deep merge)
 # ═════════════════════════════════════════════════════════════════════════════
 class TestConfigLoad:
-    def test_default_provider_is_gemini(self):
-        assert bot.CFG.get("default_provider") == "gemini"
+    def test_default_provider_is_openai(self):
+        assert bot.CFG.get("default_provider") == "openai"
 
     def test_providers_exist(self):
         providers = bot.CFG.get("providers", {})
-        for name in ("openai", "claude", "gemini"):
+        for name in ("openai", "lmstudio", "gemini"):
             assert name in providers, f"provider '{name}' missing"
 
-    def test_fallback_chain_starts_with_gemini(self):
+    def test_fallback_chain_starts_with_openai(self):
         chain = bot.CFG.get("fallback_chain", [])
-        assert chain[0] == "gemini"
+        assert chain[0] == "openai"
 
     def test_local_yaml_merge(self):
         """config.local.yaml 이 있으면 병합되는지 검증."""
@@ -251,28 +254,28 @@ class TestProviderRouting:
     def setup_method(self):
         bot._uprov.clear()
 
-    def test_default_provider_is_gemini(self):
+    def test_default_provider_is_openai(self):
         name, pc = bot.prov_for(12345)
-        assert name == "gemini"
+        assert name == "openai"
         assert "base_url" in pc
 
     def test_user_override(self):
-        bot._uprov[999] = "claude"
+        bot._uprov[999] = "gemini"
         name, _ = bot.prov_for(999)
-        assert name == "claude"
+        assert name == "gemini"
 
     def test_user_override_clears_on_del(self):
-        bot._uprov[999] = "claude"
+        bot._uprov[999] = "gemini"
         del bot._uprov[999]
         name, _ = bot.prov_for(999)
-        assert name == "gemini"  # global default 로 복귀
+        assert name == "openai"  # global default 로 복귀
 
     def test_unknown_user_gets_default(self):
         name, _ = bot.prov_for(0)
-        assert name == "gemini"
+        assert name == "openai"
 
     def test_provider_config_has_model(self):
-        for pname in ("openai", "claude", "gemini"):
+        for pname in ("openai", "lmstudio", "gemini"):
             _, pc = bot.prov_for.__wrapped__(0) if hasattr(bot.prov_for, "__wrapped__") else (None, bot.CFG["providers"][pname])
             assert "model" in pc
 

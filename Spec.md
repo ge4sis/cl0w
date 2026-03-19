@@ -42,11 +42,12 @@
 ## 4. 핵심 기능
 
 ### 4-1. 멀티 프로바이더 (LLM Router)
-- OpenAI, Anthropic(Claude), Google Gemini, 로컬 LLM(Ollama, LM Studio) 지원.
+- **OpenAI-Interface 우선**: OpenAI(GPT) 및 OpenAI 호환 API를 공식 지원하는 로컬 LLM(Ollama, LM Studio 등)을 중심으로 지원.
+- **범용 호환성**: Anthropic(Claude), Google Gemini 등 타 프로바이더는 OpenAI 호환 엔드포인트 또는 프록시(LiteLLM 등)를 통해 연결 권장.
 - `/provider` 명령어로 실시간 전환 가능.
 
 ### 4-2. 확장성 (Tools & MCP)
-- **Skill**: `tools/` 디렉토리에 파이썬 파일을 넣는 것만으로 기능 확장 (핫 리로드).
+- **Skill**: OpenAI Function Calling 규격을 따르는 파이썬 파일을 `tools/`에 넣는 것으로 기능 확장 (핫 리로드).
 - **MCP**: Model Context Protocol 서버 연동을 통해 에이전트 환경(파일시스템, DB 등) 확장.
 
 ### 4-3. 파일 및 페르소나
@@ -67,7 +68,7 @@
    ```
    TELEGRAM_BOT_TOKEN=your_token
    ALLOWED_USER_IDS=your_id
-   ANTHROPIC_API_KEY=...
+   OPENAI_API_KEY=sk-...
    ```
 3. 실행:
    ```bash
@@ -76,7 +77,8 @@
 
 ---
 
-## 6. 개발 원칙 (경량화 지향)
+## 6. 개발 원칙 (경량화 및 표준 지향)
 - **최소 의존성**: `python-telegram-bot`, `httpx`, `pyyaml` (필수), `pypdf`, `mcp` (선택).
+- **인터페이스 표준화**: 다양한 SDK를 직접 내장하는 대신, **OpenAI Chat Completions API 표준**을 상호작용의 근간으로 삼음.
 - **단일 파일 코어**: 복잡한 모듈화보다는 `bot.py` 750줄 이내의 단순한 구조 유지.
 - **유연한 명세**: 구체적인 구현 코드보다는 기능적 요구사항과 보안 원칙을 우선시하여 에이전트의 구현 자율성 보장.
