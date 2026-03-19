@@ -51,10 +51,9 @@ All providers speak OpenAI-compatible REST, so a single `httpx` client handles e
 | Provider | Type |
 |----------|------|
 | OpenAI (GPT-4o, o-series) | Cloud |
-| Anthropic Claude (Sonnet / Opus / Haiku) | Cloud |
-| Google Gemini (1.5 Pro / Flash) | Cloud |
+| Anthropic Claude (3.7 Sonnet / 3.5 Opus) | Cloud |
+| Google Gemini (2.0 Flash / Pro) | Cloud |
 | LM Studio | Local |
-| Ollama | Local |
 | Any OpenAI-compatible endpoint | Custom |
 
 Switch providers mid-conversation with `/provider claude`. Automatic fallback chain if a provider goes down.
@@ -396,7 +395,7 @@ cl0w/
 |---------|-------------|
 | *(any text)* | Chat with the current LLM |
 | `/help` | Show available commands |
-| `/provider <name>` | Switch LLM provider (`claude`, `openai`, `ollama`, …) |
+| `/provider <name>` | Show or Switch LLM provider (`gemini`, `claude`, `openai`, …) |
 | `/tools` | List active tools |
 | `/persona` | Show current persona |
 | `/persona <name>` | Switch persona (e.g. `/persona technical`) |

@@ -220,7 +220,7 @@ async def _mcp_init(app):
 # ── LLM Router ────────────────────────────────────────────────────────────────
 _uprov, _EXTRA_H, _ENV_KEYS = {}, {"claude": {"anthropic-version": "2023-06-01"}}, {"openai": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY"}
 def prov_for(uid: int) -> tuple[str, dict]:
-    n = _uprov.get(uid) or CFG.get("users",{}).get(uid,{}).get("default_provider") or CFG.get("default_provider","openai")
+    n = _uprov.get(uid) or CFG.get("users",{}).get(uid,{}).get("default_provider") or CFG.get("default_provider","gemini")
     return n, CFG.get("providers", {}).get(n, {})
 
 async def llm_stream(uid: int, history: list[dict]) -> AsyncGenerator[dict, None]:
@@ -340,9 +340,14 @@ async def on_status(u: Update, _: ContextTypes.DEFAULT_TYPE):
     await u.message.reply_text(f"*프로바이더*: {pn} (`{pc.get('model','?')}`)\n*Persona*: `{Path(_pfile).stem}`\n*Tools*: {len(_tools)+len(_mcp_tool_meta)}개", parse_mode=ParseMode.MARKDOWN)
 async def on_provider(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not await guard(u): return
-    if not ctx.args: return await u.message.reply_text(f"가능: {', '.join(CFG.get('providers',{}).keys())}")
+    cur, _ = prov_for(u.effective_user.id)
+    if not ctx.args:
+        avail = [f"• {p} {'(현재)' if p == cur else ''}" for p in CFG.get("providers", {}).keys()]
+        return await u.message.reply_text("🌐 *LLM 프로바이더 목록*:\n\n" + "\n".join(avail), parse_mode=ParseMode.MARKDOWN)
     n = ctx.args[0].lower()
-    if n in CFG.get("providers", {}): _uprov[u.effective_user.id] = n; await u.message.reply_text(f"✅ {n} 전환")
+    if n in CFG.get("providers", {}):
+        _uprov[u.effective_user.id] = n; await u.message.reply_text(f"✅ 프로바이더 전환: `{cur}` → `{n}`", parse_mode=ParseMode.MARKDOWN)
+    else: await u.message.reply_text(f"❌ '{n}'은(는) 유효한 프로바이더가 아닙니다.")
 async def on_tools(u: Update, _: ContextTypes.DEFAULT_TYPE):
     if not await guard(u): return
     ls = [f"• `{x['function']['name']}` — {x['function'].get('description','')}" for x in tools_oai()]

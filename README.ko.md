@@ -50,12 +50,11 @@
 
 | 프로바이더 | 유형 |
 |----------|------|
-| OpenAI (GPT-4o, o-series) | 클라우드 |
-| Anthropic Claude (Sonnet / Opus / Haiku) | 클라우드 |
-| Google Gemini (1.5 Pro / Flash) | 클라우드 |
+| Anthropic Claude (3.7 Sonnet / 3.5 Opus) | 클라우드 |
+| Google Gemini (2.0 Flash / Pro) - **기본값** | 클라우드 |
 | LM Studio | 로컬 |
 | Ollama | 로컬 |
-| OpenAI 호환 커스텀 엔드포인트 | 직접 추가 |
+| 기타 OpenAI 호환 엔드포인트 | 커스텀 |
 
 대화 도중 `/provider ollama` 명령으로 LLM을 즉시 전환할 수 있습니다. 프로바이더 장애 시 fallback 체인이 자동으로 다음 프로바이더로 전환합니다.
 
@@ -397,7 +396,7 @@ cl0w/
 |--------|------|
 | *(일반 텍스트)* | 현재 LLM과 대화 |
 | `/help` | 사용 가능한 명령어 목록 표시 |
-| `/provider <이름>` | LLM 전환 (`claude`, `openai`, `ollama` 등) |
+| `/provider <이름>` | LLM 프로바이더 확인 및 전환 (`gemini`, `claude`, `openai`, …) |
 | `/tools` | 활성화된 Tool 목록 |
 | `/persona` | 현재 Persona 내용 확인 |
 | `/persona <이름>` | Persona 전환 (예: `/persona technical`) |
