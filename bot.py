@@ -348,10 +348,14 @@ async def on_tools(u: Update, _: ContextTypes.DEFAULT_TYPE):
     ls = [f"• `{x['function']['name']}` — {x['function'].get('description','')}" for x in tools_oai()]
     await u.message.reply_text("\n".join(ls) or "Tool 없음", parse_mode=ParseMode.MARKDOWN)
 async def on_reset(u: Update, _: ContextTypes.DEFAULT_TYPE):
-    if await guard(u): sess_clear(u.effective_user.id); await u.message.reply_text("✅ 초기화")
+    if await guard(u): sess_clear(u.effective_user.id); await u.message.reply_text("✅ 세션 초기화 완료")
 async def on_persona(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not await guard(u): return
     if ctx.args:
+        global _pfile
+        if ctx.args[0] == "reset":
+            _pfile = _DEFAULT_PERSONA; _pcache.clear(); await u.message.reply_text("✅ Persona 초기화 완료 (default.md)")
+            return
         name = ctx.args[1] if ctx.args[0] == "switch" and len(ctx.args) > 1 else ctx.args[0]
         ok = persona_switch(name); await u.message.reply_text(f"✅ Persona `{name}`" if ok else "❌ 파일 없음")
     else: await u.message.reply_text(f"```\n{persona_load()[:3800]}\n```", parse_mode=ParseMode.MARKDOWN)

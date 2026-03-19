@@ -103,7 +103,7 @@ mcp_servers:
 All tools registered by MCP servers appear alongside Python tools in `/tools` — the LLM calls them the same way.
 
 ### 🎭 Persona / Soul System
-Give your agent a real identity. Write a markdown file — the agent's personality, tone, constraints, and attitude. It becomes the foundation of every response, across every LLM.
+Give your agent a real identity. Write a markdown file — the agent's personality, tone, constraints, and attitude. By default, cl0w uses `personas/default.md` as the starting persona.
 
 ```markdown
 ## Identity
@@ -117,6 +117,8 @@ One-liner: Sharp, honest AI partner
 ```
 
 Switch personas on the fly: `/persona technical`
+Reset persona to default: `/persona reset`
+Clear session: `/reset`
 
 ### 💬 Telegram-native UX
 - **Streaming responses** — messages update in real-time as the LLM generates
@@ -370,9 +372,8 @@ notepad persona.md    # Windows
 
 ```
 cl0w/
-├── bot.py              ← entire gateway (~390 lines)
 ├── config.yaml         ← all settings (providers, MCP servers, limits)
-├── persona.md          ← active persona (hot-reloaded)
+├── personas/default.md ← active persona by default (hot-reloaded)
 ├── .env                ← secrets (never committed)
 ├── run.sh / run.ps1    ← direct-run scripts (macOS·Linux / Windows)
 ├── requirements.txt    ← 4 core packages (+ optional mcp)
@@ -399,8 +400,9 @@ cl0w/
 | `/tools` | List active tools |
 | `/persona` | Show current persona |
 | `/persona <name>` | Switch persona (e.g. `/persona technical`) |
+| `/persona reset` | Reset persona to default (`personas/default.md`) |
 | `/status` | Provider · model · persona · tool count |
-| `/reset` | Clear conversation history |
+| `/reset` | Clear conversation history (current session) |
 
 ---
 

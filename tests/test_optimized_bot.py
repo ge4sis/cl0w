@@ -137,3 +137,44 @@ class TestOptimizedBot:
             result = await bot.guard(u)
             assert result is False # 거부됨
             # 크래시 없어야 함
+
+    async def test_on_reset_clears_history_only(self):
+        """/reset 명령이 히스토리만 초기화하고 페르소나는 유지하는지 테스트"""
+        u = MagicMock()
+        u.effective_user.id = 123
+        u.message.reply_text = AsyncMock()
+        
+        # 임의의 페르소나와 히스토리 설정
+        bot._pfile = "personas/technical.md"
+        bot._mem[123] = [{"role": "user", "content": "hi"}]
+        
+        with patch("bot.guard", AsyncMock(return_value=True)):
+            await bot.on_reset(u, MagicMock())
+            
+            # 페르소나는 유지되어야 함
+            assert bot._pfile == "personas/technical.md"
+            # 히스토리는 비워져야 함
+            assert 123 not in bot._mem or len(bot._mem[123]) == 0
+            u.message.reply_text.assert_called()
+            assert "세션 초기화" in u.message.reply_text.call_args[0][0]
+
+    async def test_on_persona_reset_resets_persona(self):
+        """/persona reset 명령이 페르소나만 초기화하는지 테스트"""
+        u = MagicMock()
+        u.effective_user.id = 123
+        u.message.reply_text = AsyncMock()
+        ctx = MagicMock()
+        ctx.args = ["reset"]
+        
+        # 임의의 페르소나 설정
+        bot._pfile = "personas/technical.md"
+        bot._pcache["something"] = (1.0, "text")
+        
+        with patch("bot.guard", AsyncMock(return_value=True)):
+            await bot.on_persona(u, ctx)
+            
+            # 기본 페르소나로 돌아왔는지 확인
+            assert bot._pfile == bot._DEFAULT_PERSONA
+            assert len(bot._pcache) == 0
+            u.message.reply_text.assert_called()
+            assert "Persona 초기화" in u.message.reply_text.call_args[0][0]
