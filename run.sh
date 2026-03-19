@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cl0w — macOS / Linux 직접 실행 스크립트 (Docker 없이)
+# cl0w — macOS / Linux 직접 실행 스크립트
 # 사용법: ./run.sh
 # 사전 준비: pip install -r requirements.txt
 
@@ -25,8 +25,8 @@ if [[ ! -f ".env" ]]; then
     exit 1
 fi
 
-# ── sessions / tools 디렉터리 보장 ───────────────────────────────────────────
-mkdir -p sessions tools
+# ── sessions / tools / personas 디렉터리 보장 ────────────────────────────────
+mkdir -p sessions tools personas
 
 # ── 실행 ─────────────────────────────────────────────────────────────────────
 printf "\033[35m"
@@ -41,7 +41,7 @@ EOF
 printf "\033[0m"
 
 echo ""
-echo "Starting cl0w (no container mode)..."
+echo "Starting cl0w..."
 echo "Stop with Ctrl+C"
 echo ""
 

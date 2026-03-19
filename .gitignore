@@ -1,12 +1,3 @@
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -23,3 +14,22 @@ __pycache__/
 
 # AI metadata
 .claude/
+.gemini/
+.agent/
+.agents/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local settings & Sessions
+.env
+config.local.yaml
+sessions/   # User conversation history
+
+# Environments
+.venv/
+env/
+venv/
+ENV/

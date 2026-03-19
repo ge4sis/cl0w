@@ -1,9 +1,0 @@
-# Windows / macOS Docker Desktop 전용 override
-# 사용법: docker compose -f docker-compose.yml -f docker-compose.windows.yml up --build
-#
-# 차이점:
-#   - extra_hosts 제거 (Docker Desktop 에서 host.docker.internal 자동 등록)
-
-services:
-  cl0w:
-    extra_hosts: !reset []

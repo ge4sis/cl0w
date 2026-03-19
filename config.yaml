@@ -5,10 +5,11 @@ telegram:
   # webhook_url: https://your.domain/webhook   # webhook 모드 시만 필요
 
 # 기본 프로바이더 (사용자가 /provider 로 변경 가능)
-default_provider: claude
+default_provider: gemini
 
 # 프로바이더 오류 시 자동 전환 체인
 fallback_chain:
+  - gemini
   - claude
   - openai
 

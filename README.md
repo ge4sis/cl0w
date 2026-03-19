@@ -15,9 +15,8 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Lines of Code](https://img.shields.io/badge/bot.py-702%20lines-f59e0b?style=flat-square)]()
+[![Lines of Code](https://img.shields.io/badge/bot.py-~390%20lines-f59e0b?style=flat-square)]()
 [![Dependencies](https://img.shields.io/badge/dependencies-4%2B-a855f7?style=flat-square)]()
-[![Container](https://img.shields.io/badge/container-ready-0ea5e9?style=flat-square&logo=docker&logoColor=white)]()
 
 [한국어 문서 →](README.ko.md)
 
@@ -32,9 +31,9 @@ Most agent frameworks are bloated, insecure, and painful to configure.
 
 | | OpenClaw | cl0w |
 |---|---|---|
-| Core logic | multiple files, 2000+ lines | **single file, 702 lines** |
+| Core logic | multiple files, 2000+ lines | **single file, ~390 lines** |
 | Dependencies | 15+ | **4 core + optional** |
-| Security | process-level | **container-isolated, read-only rootfs** |
+| Security | user-allowed | **ID allowlisting & rate limit** |
 | Interface | web UI / REST | **Telegram (zero port exposure)** |
 | Tool install | restart required | **drop a file, done** |
 | Persona | none | **markdown-defined soul** |
@@ -44,7 +43,7 @@ Most agent frameworks are bloated, insecure, and painful to configure.
 ## Features
 
 ### 🔐 Security-first Architecture
-Runs exclusively inside an **Apple Container** (macOS) or **OCI container** (Linux) with a read-only root filesystem. No inbound ports — Telegram polling means your server is invisible to the internet. Secrets are injected via environment variables only; no plaintext API keys, ever.
+No inbound ports — Telegram polling means your server is invisible to the internet. Access is strictly controlled via a Telegram ID allowlist and rate limiting. Secrets are injected via environment variables; no plaintext API keys in configuration files.
 
 ### 🧠 Every LLM, One Interface
 All providers speak OpenAI-compatible REST, so a single `httpx` client handles everything — no per-provider SDK bloat.
@@ -117,7 +116,7 @@ One-liner: Sharp, honest AI partner
 - Push back on wrong premises without hesitation
 ```
 
-Switch personas on the fly: `/persona switch technical`
+Switch personas on the fly: `/persona technical`
 
 ### 💬 Telegram-native UX
 - **Streaming responses** — messages update in real-time as the LLM generates
@@ -209,7 +208,7 @@ One command. Full privacy. No cloud API touched.
 > Different tasks need different attitudes. Switch persona, switch mode.
 
 ```
-You:   /persona switch technical
+You:   /persona technical
 
 Crow:  ✅ Persona → technical  (now: Hex)
 
@@ -230,7 +229,7 @@ Hex:   Issues found:
            ...
 ```
 
-Then switch to `/persona switch friendly` when you need to explain the same code to a non-technical teammate.
+Then switch to `/persona friendly` when you need to explain the same code to a non-technical teammate.
 
 ---
 
@@ -328,7 +327,7 @@ Every new capability is a single Python file. The agent assembles the pieces.
 |----------|-----------|---------------|
 | macOS (Apple Silicon / Intel) | Apple Container or Docker Desktop | `./run.sh` |
 | Linux | Docker Engine | `./run.sh` |
-| **Windows** | Docker Desktop (WSL2) | `.\run.ps1` |
+| **Windows** | Direct execution | `.\run.ps1` |
 
 > **No platform is left behind.** cl0w runs anywhere Python 3.12 runs.
 
@@ -336,53 +335,24 @@ Every new capability is a single Python file. The agent assembles the pieces.
 
 ## Quick Start
 
-Choose your path:
-
-### Option A — Docker (recommended, all platforms)
-
-**Prerequisites:** Docker Desktop (Windows / macOS) or Docker Engine (Linux)
-
+### 1. Clone & Setup
 ```bash
-# 1. Clone
 git clone https://github.com/your-org/cl0w.git && cd cl0w
-
-# 2. Configure secrets
-cp .env.example .env
-# Fill in TELEGRAM_BOT_TOKEN, ALLOWED_USER_IDS, API keys
+cp .env.example .env   # fill in your tokens
 ```
 
-**macOS / Linux:**
-```bash
-docker compose up --build
-```
-
-**Windows (Docker Desktop):**
-```bash
-# Uses docker-compose.windows.yml to remove the Linux-only extra_hosts entry
-docker compose -f docker-compose.yml -f docker-compose.windows.yml up --build
-```
-
-> Local LLMs (Ollama / LM Studio): `host.docker.internal` resolves automatically on Docker Desktop — no extra config needed.
-
----
-
-### Option B — Direct Python (no Docker)
-
+### 2. Run
 **macOS / Linux:**
 ```bash
 pip install -r requirements.txt python-dotenv
-cp .env.example .env   # fill in your tokens
 ./run.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
 pip install -r requirements.txt python-dotenv
-Copy-Item .env.example .env   # fill in your tokens
 .\run.ps1
 ```
-
-> Without Docker, container isolation is not active. Recommended for local development only.
 
 ---
 
@@ -400,13 +370,10 @@ notepad persona.md    # Windows
 
 ```
 cl0w/
-├── bot.py              ← entire gateway (702 lines)
+├── bot.py              ← entire gateway (~390 lines)
 ├── config.yaml         ← all settings (providers, MCP servers, limits)
 ├── persona.md          ← active persona (hot-reloaded)
 ├── .env                ← secrets (never committed)
-├── Dockerfile
-├── docker-compose.yml
-├── docker-compose.windows.yml
 ├── run.sh / run.ps1    ← direct-run scripts (macOS·Linux / Windows)
 ├── requirements.txt    ← 4 core packages (+ optional mcp)
 │
@@ -431,7 +398,7 @@ cl0w/
 | `/provider <name>` | Switch LLM provider (`claude`, `openai`, `ollama`, …) |
 | `/tools` | List active tools |
 | `/persona` | Show current persona |
-| `/persona switch <name>` | Hot-swap to a different persona |
+| `/persona <name>` | Switch persona (e.g. `/persona technical`) |
 | `/status` | Provider · model · persona · tool count |
 | `/reset` | Clear conversation history |
 
@@ -450,7 +417,7 @@ fallback_chain:       # auto-failover order
 
 providers:
   ollama:
-    base_url: http://host.docker.internal:11434/v1
+    base_url: http://localhost:11434/v1
     model: llama3
 
 rate_limit: 20        # messages per minute per user
@@ -503,19 +470,16 @@ providers:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Container (read-only rootfs)                   │
+│  Direct Process Execution (Isolated Shell)       │
 │                                                 │
-│  • non-root UID                                 │
 │  • no inbound ports (polling only)              │
-│  • secrets via env / tmpfs only                 │
+│  • secrets via env (dot-env)                    │
 │  • user allowlist (Telegram ID)                 │
 │  • rate limit per user                          │
 │  • tool execution timeout (30s)                 │
 │  • file size cap (20 MB)                        │
-│                                                 │
-│  writable volumes (isolated):                   │
-│    /app/tools    ← plugin bind-mount            │
-│    /app/sessions ← named volume                 │
+│  • recursion limit (10 cycles)                  │
+│  • dangerous tool confirmation (approval req)   │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -541,7 +505,7 @@ providers:
 - [ ] Voice message → text (Whisper via Tool)
 - [ ] Multi-agent orchestration (agent-to-agent calls)
 - [ ] Web UI companion (read-only dashboard)
-- [ ] One-click install script (no Docker required)
+- [ ] One-click install script (CLI)
 - [ ] MCP server registry integration
 
 ---
@@ -549,7 +513,7 @@ providers:
 ## Contributing
 
 1. Fork → branch → PR
-2. Keep `bot.py` under 750 lines
+2. Keep `bot.py` small and optimized
 3. New features go in `tools/` when possible
 4. Every PR needs a one-line "why" in the description
 

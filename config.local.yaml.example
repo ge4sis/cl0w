@@ -1,0 +1,22 @@
+# config.local.yaml — 로컬 전용 설정 (git 제외)
+#
+# config.yaml 위에 덮어씌워짐 (deep merge).
+# API key가 필요한 MCP 서버는 여기에 등록하세요.
+# 이 파일을 config.local.yaml 로 복사해서 사용하세요.
+
+mcp_servers:
+  # 예시: Notion MCP 서버 (API key 포함)
+  # notion:
+  #   transport: stdio
+  #   command: uvx
+  #   args: ["mcp-server-notion"]
+  #   env:
+  #     NOTION_API_KEY: "secret_xxxxxx"
+
+  # 예시: Slack MCP 서버
+  # slack:
+  #   transport: stdio
+  #   command: uvx
+  #   args: ["mcp-server-slack"]
+  #   env:
+  #     SLACK_BOT_TOKEN: "xoxb-xxxxxx"
