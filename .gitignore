@@ -1,0 +1,15 @@
+# Secrets
+.env
+mcp.json
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
