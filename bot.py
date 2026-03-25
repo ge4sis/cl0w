@@ -106,7 +106,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     reset_full(update.effective_user.id)
     await update.message.reply_text(
-        "👋 안녕! cl0w야.\n대화와 Persona가 초기화됐어. 무엇을 도와줄까?\n\n/help 로 명령어 목록을 볼 수 있어."
+        "👋 안녕! cl0w야.\n대화와 Persona가 초기화되었습니다. 무엇을 도와드릴까요?\n\n/help 로 명령어 목록을 볼 수 있습니다."
     )
 
 
@@ -116,7 +116,7 @@ async def new_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update):
         return
     reset_session(update.effective_user.id)
-    await update.message.reply_text("대화 히스토리를 초기화했어. 새 주제로 이야기해보자!")
+    await update.message.reply_text("대화 히스토리를 초기화했습니다. Persona는 유지됩니다.")
 
 
 # ─── /help ────────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ async def persona_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if sub == "list":
         personas = persona_mgr.list_all()
         if not personas:
-            await update.message.reply_text("사용 가능한 Persona가 없어요. `personas/` 폴더를 확인해줘.")
+            await update.message.reply_text("사용 가능한 Persona가 없습니다. `personas/` 폴더를 확인해주세요.")
             return
         lines = [f"  `{p.name}` — {p.description}" for p in personas]
         await update.message.reply_text(
@@ -236,7 +236,7 @@ async def persona_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target = args[1].lower()
         if not persona_mgr.get(target):
             await update.message.reply_text(
-                f"`{target}` Persona를 찾을 수 없어요. `/persona list` 로 확인해봐.",
+                f"`{target}` Persona를 찾을 수 없습니다. `/persona list` 로 확인해주세요.",
                 parse_mode="Markdown",
             )
             return
@@ -244,14 +244,14 @@ async def persona_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reset_session(user_id)
         p = persona_mgr.get(target)
         await update.message.reply_text(
-            f"Persona를 *{p.name}* 으로 변경했어. 대화 히스토리도 초기화됐어.",
+            f"Persona를 *{p.name}* 으로 변경했습니다. 대화 히스토리도 초기화되었습니다.",
             parse_mode="Markdown",
         )
 
     elif sub == "reset":
         user_persona[user_id] = config.DEFAULT_PERSONA
         reset_session(user_id)
-        await update.message.reply_text("Persona를 기본값으로 초기화했어.")
+        await update.message.reply_text("Persona를 기본값으로 초기화했습니다.")
 
     else:
         await update.message.reply_text(
@@ -271,7 +271,7 @@ async def skill_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not args or args[0].lower() == "list":
         skills = skill_mgr.list_all()
         if not skills:
-            await update.message.reply_text("사용 가능한 Skill이 없어요. `skills/` 폴더를 확인해줘.")
+            await update.message.reply_text("사용 가능한 Skill이 없습니다. `skills/` 폴더를 확인해주세요.")
             return
         lines = [f"  `{s.usage}` — {s.description}" for s in skills]
         await update.message.reply_text(
@@ -305,7 +305,7 @@ async def _run_skill(
     rendered = skill_mgr.render(skill_name, skill_args, context=context_text)
     if rendered is None:
         await update.message.reply_text(
-            f"`{skill_name}` Skill을 찾을 수 없어. `/skill` 로 목록을 확인해봐.",
+            f"`{skill_name}` Skill을 찾을 수 없습니다. `/skill` 로 목록을 확인해주세요.",
             parse_mode="Markdown",
         )
         return
@@ -326,11 +326,11 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if sub == "list" or sub == "":
         if not manager:
-            await update.message.reply_text("MCP가 초기화되지 않았어.")
+            await update.message.reply_text("MCP가 초기화되지 않았습니다.")
             return
         statuses = manager.get_status()
         if not statuses:
-            await update.message.reply_text("등록된 MCP 서버가 없어.\n`mcp.json` 파일을 확인해봐.")
+            await update.message.reply_text("등록된 MCP 서버가 없습니다.\n`mcp.json` 파일을 확인해주세요.")
             return
         lines = []
         for s in statuses:
@@ -344,7 +344,7 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif sub == "reload":
-        await update.message.reply_text("MCP 서버를 재시작할게...")
+        await update.message.reply_text("MCP 서버를 재시작하겠습니다...")
         if manager:
             await manager.reload(config.MCP_CONFIG_PATH)
         else:
@@ -359,7 +359,7 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     else:
         await update.message.reply_text(
-            "알 수 없는 서브 명령어야. `/mcp list`, `/mcp reload` 를 써봐.",
+            "알 수 없는 서브 명령어입니다. `/mcp list`, `/mcp reload` 를 써보세요.",
             parse_mode="Markdown",
         )
 
