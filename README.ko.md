@@ -1,3 +1,9 @@
+<div align="right">
+
+[English Version →](README.md)
+
+</div>
+
 <div align="center">
 <pre>
   ██████╗██╗      ██████╗ ██╗    ██╗
