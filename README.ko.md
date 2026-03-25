@@ -352,3 +352,11 @@ python-docx>=1.1.0
 ## 라이선스
 
 MIT
+
+---
+
+## 프로젝트 응원하기
+
+cl0w가 도움이 되었다면 GitHub에서 ⭐을 눌러주세요! 프로젝트가 더 널리 알려지는 데 큰 힘이 됩니다.
+
+[**cl0w에 Star 주기**](https://github.com/ge4sis/cl0w)

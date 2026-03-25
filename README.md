@@ -345,3 +345,11 @@ python-docx>=1.1.0
 ## License
 
 MIT
+
+---
+
+## Support the Project
+
+If you find cl0w useful, please consider giving it a ⭐ on GitHub! It helps more people discover the project.
+
+[**Give cl0w a Star**](https://github.com/ge4sis/cl0w)
