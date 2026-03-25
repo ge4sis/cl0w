@@ -6,10 +6,20 @@ mcp.json
 .claude/
 
 # Python
+.venv/
+venv/
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.log
+
+# User Customization
+personas/
+skills/
+
+# Distribution / Build
 *.egg-info/
 dist/
 build/
-.venv/
-venv/

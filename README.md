@@ -312,15 +312,10 @@ cl0w/
 ├── persona_manager.py   # Persona loader
 ├── skill_manager.py     # Skill loader + template renderer
 ├── file_handler.py      # File parsing (image/PDF/docx/text/code)
-├── personas/            # Persona Markdown files
-│   ├── default.md
-│   ├── coder.md
-│   └── analyst.md
-├── skills/              # Skill Markdown files
-│   ├── translate.md
-│   ├── summarize.md
-│   ├── review.md
-│   └── explain.md
+├── personas/            # Your personas (gitignored)
+├── personas.example/    # Persona examples
+├── skills/              # Your skills (gitignored)
+├── skills.example/      # Skill examples
 ├── mcp.json             # Your MCP config (gitignored)
 ├── mcp.json.example     # MCP config template
 ├── .env                 # Your secrets (gitignored)

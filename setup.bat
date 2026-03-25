@@ -33,6 +33,20 @@ if not exist "mcp.json" (
     echo   mcp.json already exists, skipping.
 )
 
+if not exist "personas\" (
+    xcopy /e /i personas.example personas
+    echo   personas/ created and seeded with examples.
+) else (
+    echo   personas/ already exists, skipping.
+)
+
+if not exist "skills\" (
+    xcopy /e /i skills.example skills
+    echo   skills/ created and seeded with examples.
+) else (
+    echo   skills/ already exists, skipping.
+)
+
 echo.
 echo === Setup complete ===
 echo Next steps:

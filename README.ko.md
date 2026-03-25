@@ -319,15 +319,10 @@ cl0w/
 ├── persona_manager.py   # Persona 로더
 ├── skill_manager.py     # Skill 로더 + 템플릿 렌더러
 ├── file_handler.py      # 파일 파싱 (이미지/PDF/docx/텍스트/코드)
-├── personas/            # Persona Markdown 파일
-│   ├── default.md
-│   ├── coder.md
-│   └── analyst.md
-├── skills/              # Skill Markdown 파일
-│   ├── translate.md
-│   ├── summarize.md
-│   ├── review.md
-│   └── explain.md
+├── personas/            # 개인 Persona (gitignore됨)
+├── personas.example/    # Persona 예시
+├── skills/              # 개인 Skill (gitignore됨)
+├── skills.example/      # Skill 예시
 ├── mcp.json             # 실제 MCP 설정 (gitignore됨)
 ├── mcp.json.example     # MCP 설정 템플릿
 ├── .env                 # 실제 시크릿 (gitignore됨)

@@ -37,6 +37,20 @@ else
     echo "  mcp.json already exists, skipping."
 fi
 
+if [ ! -d "personas" ]; then
+    cp -r personas.example personas
+    echo "  personas/ created and seeded with examples."
+else
+    echo "  personas/ already exists, skipping."
+fi
+
+if [ ! -d "skills" ]; then
+    cp -r skills.example skills
+    echo "  skills/ created and seeded with examples."
+else
+    echo "  skills/ already exists, skipping."
+fi
+
 echo ""
 echo "=== Setup complete ==="
 echo "Next steps:"
