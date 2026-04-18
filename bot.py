@@ -106,7 +106,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     reset_full(update.effective_user.id)
     await update.message.reply_text(
-        "👋 안녕! cl0w야.\n대화와 Persona가 초기화되었습니다. 무엇을 도와드릴까요?\n\n/help 로 명령어 목록을 볼 수 있습니다."
+        "👋 cl0w 에이전트가 초기화 되었습니다.\n대화와 Persona가 초기화되었습니다. 무엇을 도와드릴까요?\n\n/help 로 명령어 목록을 볼 수 있습니다."
     )
 
 

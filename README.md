@@ -64,6 +64,9 @@ Send a file, get an intelligent response. cl0w handles:
 - **Code files** — Review, explanation, refactoring suggestions
 - **Plain text / CSV / JSON** — Any text-based format
 
+### Zero Weight (Lightweight)
+Designed with a "Zero Weight" philosophy, cl0w is extremely lean and efficient. It uses minimal system resources, has a small code footprint, and avoids heavy dependencies, ensuring it runs perfectly even on modest hardware alongside your local LLM.
+
 ### Secure by Design
 - All LLM inference happens on `127.0.0.1` — no data leaves your machine
 - Telegram whitelist: only your user IDs can interact with the bot
