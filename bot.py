@@ -77,9 +77,14 @@ async def _check_auth(update: Update) -> bool:
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
 async def _send_long(update: Update, text: str):
+    if not text or not text.strip():
+        logger.warning("Attempted to send empty or whitespace-only text. Skipping.")
+        return
     MAX = 4050
     for i in range(0, len(text), MAX):
-        await update.message.reply_text(text[i:i + MAX])
+        part = text[i:i + MAX]
+        if part:
+            await update.message.reply_text(part)
 
 
 async def _typing(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -106,7 +111,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     reset_full(update.effective_user.id)
     await update.message.reply_text(
-        "👋 cl0w 에이전트가 초기화 되었습니다.\n대화와 Persona가 초기화되었습니다. 무엇을 도와드릴까요?\n\n/help 로 명령어 목록을 볼 수 있습니다."
+        "👋 cl0w 에이전트입니다.\n대화와 Persona가 초기화되었습니다. 무엇을 도와드릴까요?\n\n/help 로 명령어 목록을 볼 수 있습니다."
     )
 
 
@@ -475,7 +480,19 @@ def main():
         logger.error("TELEGRAM_BOT_TOKEN is not set. Exiting.")
         return
 
-    app = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).post_init(post_init).build()
+    app = (
+        ApplicationBuilder()
+        .token(config.TELEGRAM_BOT_TOKEN)
+        .connect_timeout(30.0)
+        .read_timeout(30.0)
+        .write_timeout(30.0)
+        .pool_timeout(30.0)
+        .get_updates_read_timeout(30.0)
+        .get_updates_connect_timeout(30.0)
+        .get_updates_pool_timeout(30.0)
+        .post_init(post_init)
+        .build()
+    )
 
     # Core commands
     app.add_handler(CommandHandler("start", start_cmd))
