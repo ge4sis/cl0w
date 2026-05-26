@@ -92,6 +92,8 @@ async def generate_response(messages: list) -> str:
             response = await client.chat.completions.create(**kwargs)
 
         raw = response.choices[0].message.content or ""
+        if not raw and response.choices[0].finish_reason == "tool_calls":
+            raw = "⚠️ 도구 실행 횟수 한도(5회)를 초과하여 대답을 생성하지 못했습니다. 권한이 거부되었거나 오류가 지속되었는지 확인해주세요."
         return _clean_response(raw)
 
     except Exception as e:
