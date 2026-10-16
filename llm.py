@@ -1,11 +1,12 @@
 import re
 import json
 from openai import AsyncOpenAI
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import config
 
 if TYPE_CHECKING:
+    from tools.registry import ToolRegistry
     from mcp_client import MCPManager
 
 client = AsyncOpenAI(
@@ -13,12 +14,19 @@ client = AsyncOpenAI(
     api_key=config.LM_STUDIO_API_KEY,
 )
 
-_mcp_manager: "MCPManager | None" = None
+_tool_registry: Optional["ToolRegistry"] = None
+
+
+def set_tool_registry(registry: "ToolRegistry"):
+    global _tool_registry
+    _tool_registry = registry
 
 
 def set_mcp_manager(manager: "MCPManager"):
-    global _mcp_manager
-    _mcp_manager = manager
+    """Backward compatibility helper."""
+    global _tool_registry
+    if _tool_registry:
+        _tool_registry.set_mcp_manager(manager)
 
 
 def _clean_response(raw: str) -> str:
@@ -51,8 +59,8 @@ async def generate_response(messages: list) -> str:
         }
 
         tools = []
-        if _mcp_manager:
-            tools = _mcp_manager.get_all_openai_tools()
+        if _tool_registry:
+            tools = _tool_registry.get_all_openai_tools()
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
@@ -77,10 +85,10 @@ async def generate_response(messages: list) -> str:
 
                 print(f"[Tool] {tool_name}({tool_args})")
 
-                if _mcp_manager:
-                    result_text = await _mcp_manager.execute_tool_call(tool_name, tool_args)
+                if _tool_registry:
+                    result_text = await _tool_registry.execute_tool_call(tool_name, tool_args)
                 else:
-                    result_text = "Error: MCP Manager not initialized."
+                    result_text = "Error: Tool Registry not initialized."
 
                 messages.append({
                     "role": "tool",
@@ -93,7 +101,10 @@ async def generate_response(messages: list) -> str:
 
         raw = response.choices[0].message.content or ""
         if not raw and response.choices[0].finish_reason == "tool_calls":
-            raw = "⚠️ 도구 실행 횟수 한도(5회)를 초과하여 대답을 생성하지 못했습니다. 권한이 거부되었거나 오류가 지속되었는지 확인해주세요."
+            raw = (
+                f"⚠️ 도구 실행 횟수 한도({config.LLM_MAX_TOOL_LOOPS}회)를 초과하여 대답을 생성하지 못했습니다. "
+                "권한이 거부되었거나 오류가 지속되었는지 확인해주세요."
+            )
         return _clean_response(raw)
 
     except Exception as e:

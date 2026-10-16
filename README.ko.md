@@ -50,9 +50,16 @@ cl0w는 사용자의 컴퓨터에서 완전히 동작하는 개인용 AI Agent�
 
 ## 핵심 기능
 
-### Agent 수준의 도구 사용 (MCP)
-cl0w는 [Model Context Protocol(MCP)](https://modelcontextprotocol.io) 서버와 연동하여 LLM에게 실제 도구를 제공합니다.
-파일 시스템 접근, 웹 검색, 코드 실행, DB 쿼리 등 — `mcp.json`에 설정하면 Agent가 필요한 시점에 자동으로 호출합니다.
+### 내장 셸 & 워크스페이스 도구 (Native Tools)
+별도의 외부 MCP 프로세스 없이 봇 내부에서 격리된 셸과 워크스페이스를 즉시 사용합니다:
+- **`shell_exec`** — 지정된 워크스페이스 및 전용 Python 가상환경 내에서 안전하게 명령어 실행 (macOS Seatbelt 샌드박스로 시스템 오염 원천 차단)
+- **`fs_read` / `fs_write` / `fs_list`** — 워크스페이스 파일 생성, 읽기, 탐색
+- **`send_file`** — LLM이 생성한 결과물(PDF, Word, Excel, CSV, 차트 등)을 **텔레그램 채팅으로 즉시 전송**
+- **업로드 자동 저장** — 사용자가 텔레그램으로 보낸 문서, 이미지, 데이터 파일이 워크스페이스 `uploads/`에 자동 보관되어 셸 도구로 즉시 가공 가능
+
+### Agent 수준의 외부 도구 확장 (MCP)
+cl0w는 [Model Context Protocol(MCP)](https://modelcontextprotocol.io) 서버와 연동하여 LLM에게 외부 도구를 확장합니다.
+웹 검색, 금융 데이터, DART 공시 조회 등 — `mcp.json`에 설정하면 Agent가 필요한 시점에 자동으로 호출합니다.
 
 ### Persona 시스템
 AI의 성격과 역할을 Markdown 파일로 정의합니다. 명령어 하나로 전환할 수 있습니다.
@@ -97,7 +104,8 @@ cl0w는 처음부터 보안을 중심에 두고 설계되었습니다:
 |---|---|
 | 무단 접근 | 텔레그램 user ID 화이트리스트 (`ALLOWED_USER_IDS`) |
 | 데이터 유출 | LLM이 로컬에서 동작 — 클라우드 API 미사용 |
-| 자격증명 노출 | `.env`와 `mcp.json`은 `.gitignore`에 포함 |
+| 자격증명 노출 | `.env`와 `mcp.json`은 `.gitignore`에 포함, 하위 셸 프로세스 환경변수 필터링 |
+| 셸/파일 탈출 | macOS Seatbelt OS 샌드박스로 워크스페이스 외부 쓰기 차단, 민감 경로(`~/.ssh`, `.env`) 읽기 차단 |
 | 네트워크 노출 | Long Polling만 사용 — 인바운드 포트 완전 차단 |
 | 파일을 통한 공격 | 단일 파일 20MB 제한, 텍스트 20,000자 자동 트런케이션 |
 

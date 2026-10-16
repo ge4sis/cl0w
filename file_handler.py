@@ -93,8 +93,16 @@ def build_image_message(data: bytes, filename: str, caption: Optional[str]) -> d
     return {"role": "user", "content": content}
 
 
-def build_text_message(extracted: str, filename: str, caption: Optional[str], category: str) -> dict:
+def build_text_message(
+    extracted: str,
+    filename: str,
+    caption: Optional[str],
+    category: str,
+    workspace_rel_path: Optional[str] = None,
+) -> dict:
     extracted = _truncate(extracted)
+
+    ws_note = f"\n[Saved to workspace: `{workspace_rel_path}`]" if workspace_rel_path else ""
 
     if category == "code":
         ext = os.path.splitext(filename)[1].lstrip(".")
@@ -103,17 +111,23 @@ def build_text_message(extracted: str, filename: str, caption: Optional[str], ca
         file_block = extracted
 
     if caption:
-        text = f"{caption}\n\n**File: {filename}**\n\n{file_block}"
+        text = f"{caption}\n\n**File: {filename}**{ws_note}\n\n{file_block}"
     else:
-        text = f"**File: {filename}**\n\n{file_block}"
+        text = f"**File: {filename}**{ws_note}\n\n{file_block}"
 
     return {"role": "user", "content": text}
 
 
-def process_file(data: bytes, filename: str, caption: Optional[str]) -> dict:
+def process_file(
+    data: bytes,
+    filename: str,
+    caption: Optional[str],
+    workspace_rel_path: Optional[str] = None,
+) -> dict:
     """
     Returns a message dict ready to append to the session.
-    Raises ValueError for unsupported file types.
+    If workspace_rel_path is provided, even unparsed file types (zip, xlsx, etc.)
+    can be accepted so the LLM can process them via shell_exec.
     """
     category = get_file_category(filename)
 
@@ -130,10 +144,19 @@ def process_file(data: bytes, filename: str, caption: Optional[str]) -> dict:
         except UnicodeDecodeError:
             extracted = data.decode("latin-1", errors="replace")
     else:
+        if workspace_rel_path:
+            # File is saved to workspace; let LLM know it can use shell tools
+            ws_note = f"[Saved to workspace: `{workspace_rel_path}`]"
+            if caption:
+                text = f"{caption}\n\n**File: {filename}**\n{ws_note}\n\n(Binary/unsupported text format. Use shell_exec to inspect or process this file.)"
+            else:
+                text = f"**File: {filename}**\n{ws_note}\n\n(Binary/unsupported text format. Use shell_exec to inspect or process this file.)"
+            return {"role": "user", "content": text}
+
         supported = sorted(IMAGE_EXTS | PDF_EXTS | WORD_EXTS | TEXT_EXTS | CODE_EXTS)
         raise ValueError(
             f"지원하지 않는 파일 형식이에요.\n"
             f"지원 형식: {', '.join(supported)}"
         )
 
-    return build_text_message(extracted, filename, caption, category)
+    return build_text_message(extracted, filename, caption, category, workspace_rel_path)

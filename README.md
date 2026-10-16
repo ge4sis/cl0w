@@ -47,8 +47,15 @@ It's not a chatbot. It's an **agent**: it reasons, uses tools via MCP, switches 
 
 ## Core Features
 
+### Native Shell & Workspace Tools
+cl0w includes built-in sandboxed tools running directly in-process:
+- **`shell_exec`** — Run shell commands inside a dedicated workspace and Python virtual environment (sandboxed by macOS Seatbelt to protect system files)
+- **`fs_read` / `fs_write` / `fs_list`** — Read, write, and explore files within the workspace
+- **`send_file`** — Deliver generated files (PDF, Word, Excel, CSV, charts) **directly back to the Telegram chat**
+- **Automatic Upload Archiving** — User-uploaded files and photos are automatically saved to `workspace/uploads/` for shell processing
+
 ### Agent-grade Tool Use (MCP)
-cl0w integrates with [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers, giving the LLM real tools: file system access, web search, code execution, database queries, and more. Just configure `mcp.json` and the agent uses tools automatically when needed.
+cl0w integrates with [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers, giving the LLM extensible external tools: web search, financial APIs, corporate disclosures, and more. Just configure `mcp.json` and the agent uses tools automatically when needed.
 
 ### Persona System
 Define multiple AI personalities in plain Markdown. Switch between them with a single command. Each persona is a custom system prompt — you're in full control of how the agent thinks and communicates.
@@ -91,7 +98,8 @@ cl0w is built with a security-first mindset:
 |---|---|
 | Unauthorized access | Telegram user ID whitelist (`ALLOWED_USER_IDS`) |
 | Data exfiltration | LLM runs locally; no API calls to cloud providers |
-| Credential leaks | `.env` and `mcp.json` are in `.gitignore` |
+| Credential leaks | `.env` and `mcp.json` are in `.gitignore`; subprocess env vars scrubbed |
+| Sandbox & host escape | macOS Seatbelt denies file writes outside workspace and blocks sensitive paths (`~/.ssh`, `.env`) |
 | Network exposure | Long Polling only — zero inbound ports opened |
 | Prompt injection via files | File size capped at 20 MB; text truncated at 20,000 chars |
 

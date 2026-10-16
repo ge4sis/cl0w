@@ -37,8 +37,10 @@
     ├── Session Manager      # 유저별 대화 히스토리
     ├── Persona Manager      # 마크다운 파일 기반 시스템 프롬프트
     ├── Skill Manager        # 마크다운 파일 기반 프롬프트 템플릿
-    ├── File Handler         # 이미지/문서/코드 파일 처리
-    ├── MCP Manager          # 로컬 mcp.json → 도구 서버 관리
+    ├── File Handler         # 이미지/문서/코드 파일 처리 및 업로드 자동 저장
+    ├── Tool Registry        # Native Tools + MCP Manager 통합 레지스트리
+    │   ├── Native Tools     # shell_exec (Seatbelt), fs_*, send_file
+    │   └── MCP Manager      # 로컬 mcp.json → 외부 도구 서버 관리
     └── LLM Client           # LM Studio OpenAI-compatible API
             ↕ HTTP (127.0.0.1)
 [LM Studio Local Server]
@@ -52,6 +54,8 @@
 | Runtime | Python 3.9+ | 경량 단일 프로세스 |
 | LLM Engine | LM Studio (Local) | OpenAI-compatible API |
 | API Client | `openai` SDK | `base_url` 로컬로 지정 |
+| Native Tools | Python in-process | shell_exec, fs_read/write/list, send_file |
+| Sandbox | macOS Seatbelt (`sandbox-exec`) | 파일 쓰기 격리 및 민감 경로 차단 |
 | MCP | Custom JSON-RPC Client | stdio / SSE 모두 지원 |
 | Persona | Markdown 파일 | `personas/` 디렉토리 |
 | Skill | Markdown + Frontmatter | `skills/` 디렉토리 |

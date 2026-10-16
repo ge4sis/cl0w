@@ -19,13 +19,25 @@ LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://127.0.0.1:1234/v1")
 LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "local-model")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
-LLM_MAX_TOOL_LOOPS = int(os.getenv("LLM_MAX_TOOL_LOOPS", "5"))
+LLM_MAX_TOOL_LOOPS = int(os.getenv("LLM_MAX_TOOL_LOOPS", "15"))
 
 # cl0w paths
 MCP_CONFIG_PATH = os.getenv("MCP_CONFIG_PATH", "./mcp.json")
 PERSONAS_DIR = os.getenv("PERSONAS_DIR", "./personas")
 SKILLS_DIR = os.getenv("SKILLS_DIR", "./skills")
 DEFAULT_PERSONA = os.getenv("DEFAULT_PERSONA", "default")
+
+# Shell & Workspace tool settings
+SHELL_ENABLED = os.getenv("SHELL_ENABLED", "true").lower() in ("true", "1", "yes")
+SHELL_WORKSPACE = os.path.expanduser(os.getenv("SHELL_WORKSPACE", "~/cl0w_workspace"))
+SHELL_TIMEOUT = int(os.getenv("SHELL_TIMEOUT", "120"))
+SHELL_MAX_OUTPUT = int(os.getenv("SHELL_MAX_OUTPUT", "8000"))
+SHELL_SANDBOX = os.getenv("SHELL_SANDBOX", "auto")
+_venv_pkgs_str = os.getenv(
+    "SHELL_VENV_PACKAGES",
+    "fpdf2,reportlab,python-docx,openpyxl,python-pptx,markdown,matplotlib,pandas",
+)
+SHELL_VENV_PACKAGES = [p.strip() for p in _venv_pkgs_str.split(",") if p.strip()]
 
 if not TELEGRAM_BOT_TOKEN:
     raise ValueError("Missing TELEGRAM_BOT_TOKEN in environment variables.")

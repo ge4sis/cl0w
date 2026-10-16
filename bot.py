@@ -1,3 +1,4 @@
+import os
 import logging
 from datetime import datetime
 
@@ -19,6 +20,14 @@ from persona_manager import PersonaManager
 from skill_manager import SkillManager
 from file_handler import process_file
 
+from tools.base import ToolContext, set_tool_context, reset_tool_context
+from tools.workspace import Workspace
+from tools.sandbox import sandbox_available
+from tools.env_guide import VenvManager, build_environment_guide
+from tools.registry import ToolRegistry
+from tools.shell import ShellExecTool, FsReadTool, FsWriteTool, FsListTool
+from tools.delivery import SendFileTool
+
 # ─── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -30,6 +39,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 # ─── Global managers ──────────────────────────────────────────────────────────
 persona_mgr = PersonaManager(config.PERSONAS_DIR, config.DEFAULT_PERSONA)
 skill_mgr = SkillManager(config.SKILLS_DIR)
+tool_registry = ToolRegistry()
+workspace = Workspace(config.SHELL_WORKSPACE)
+venv_mgr = VenvManager(workspace, config.SHELL_VENV_PACKAGES)
 
 # user_id → list of message dicts
 user_sessions: dict[int, list] = {}
@@ -43,7 +55,10 @@ def _system_prompt(user_id: int) -> str:
     persona_key = user_persona.get(user_id, config.DEFAULT_PERSONA)
     base = persona_mgr.get_system_prompt(persona_key)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"{base}\n\nCurrent date and time: {now}"
+    prompt = f"{base}\n\nCurrent date and time: {now}"
+    if config.SHELL_ENABLED:
+        prompt += build_environment_guide(workspace, venv_mgr)
+    return prompt
 
 
 def get_session(user_id: int) -> list:
@@ -113,13 +128,39 @@ async def _typing(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning(f"Ignored unexpected error during typing action: {e}")
 
 
+async def _keep_typing(context: ContextTypes.DEFAULT_TYPE, chat_id: int, stop_ev: asyncio.Event):
+    while not stop_ev.is_set():
+        try:
+            await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(stop_ev.wait(), timeout=4.0)
+        except asyncio.TimeoutError:
+            pass
+
+
 async def _reply_and_llm(update: Update, context: ContextTypes.DEFAULT_TYPE, message_dict: dict):
-    """Append message_dict to session, call LLM, send response."""
+    """Append message_dict to session, call LLM with typing keepalive, send response."""
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
     session = get_session(user_id)
-    await _typing(update, context)
     session.append(message_dict)
-    response = await llm.generate_response(session)
+
+    stop_typing = asyncio.Event()
+    typing_task = asyncio.create_task(_keep_typing(context, chat_id, stop_typing))
+
+    # Set ToolContext so native tools (like send_file) can interact with this chat
+    tool_ctx = ToolContext(bot=context.bot, chat_id=chat_id)
+    token = set_tool_context(tool_ctx)
+
+    try:
+        response = await llm.generate_response(session)
+    finally:
+        stop_typing.set()
+        typing_task.cancel()
+        reset_tool_context(token)
+
     session.append({"role": "assistant", "content": response})
     await _send_long(update, response)
 
@@ -204,8 +245,21 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             mcp_text = "\n".join(mcp_lines)
         else:
             mcp_text = "  등록된 MCP 서버 없음"
+    # Shell / Workspace status
+    if config.SHELL_ENABLED:
+        sb_status = "macOS Seatbelt (active)" if sandbox_available() else "OS Sandbox unavailable"
+        venv_st = venv_mgr.status
+        if venv_mgr.last_error:
+            venv_st += f" ({venv_mgr.last_error})"
+        shell_text = (
+            f"  활성화: ✅\n"
+            f"  경로: `{workspace.root}`\n"
+            f"  샌드박스: {sb_status}\n"
+            f"  Python 환경: {venv_st}\n"
+            f"  Native 도구: `shell_exec`, `fs_read`, `fs_write`, `fs_list`, `send_file`"
+        )
     else:
-        mcp_text = "  MCP 미초기화"
+        shell_text = "  비활성화"
 
     session_len = len(get_session(user_id)) - 1  # exclude system prompt
 
@@ -214,6 +268,7 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"*Persona:* {persona_info}\n"
         f"*대화 히스토리:* {session_len}턴\n"
         f"*LLM:* `{config.LM_STUDIO_BASE_URL}` / model: `{config.LM_STUDIO_MODEL}`\n\n"
+        f"*Workspace & Shell 도구:*\n{shell_text}\n\n"
         f"*MCP 서버:*\n{mcp_text}"
     )
     await _reply_with_retry(update, text, parse_mode="Markdown")
@@ -409,23 +464,30 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     photo_file = await update.message.photo[-1].get_file()
     byte_array = await photo_file.download_as_bytearray()
-    b64 = base64.b64encode(byte_array).decode("utf-8")
+    raw_bytes = bytes(byte_array)
+
+    rel_path = None
+    if config.SHELL_ENABLED:
+        try:
+            rel_path = workspace.save_upload(raw_bytes, "photo.jpg")
+        except Exception as e:
+            logger.warning(f"Failed to auto-save photo to workspace: {e}")
+
+    b64 = base64.b64encode(raw_bytes).decode("utf-8")
     image_url = f"data:image/jpeg;base64,{b64}"
 
     caption = update.message.caption
+    caption_prefix = f"[Saved to workspace: `{rel_path}`]\n\n" if rel_path else ""
+
     content = []
     if caption:
-        content.append({"type": "text", "text": caption})
+        content.append({"type": "text", "text": f"{caption_prefix}{caption}"})
     else:
-        content.append({"type": "text", "text": "이 이미지에 대해 설명해줘."})
+        default_prompt = f"{caption_prefix}이 이미지에 대해 설명해줘." if caption_prefix else "이 이미지에 대해 설명해줘."
+        content.append({"type": "text", "text": default_prompt})
     content.append({"type": "image_url", "image_url": {"url": image_url}})
 
-    user_id = update.effective_user.id
-    session = get_session(user_id)
-    session.append({"role": "user", "content": content})
-    response = await llm.generate_response(session)
-    session.append({"role": "assistant", "content": response})
-    await _send_long(update, response)
+    await _reply_and_llm(update, context, {"role": "user", "content": content})
 
 
 # ─── Document handler ─────────────────────────────────────────────────────────
@@ -442,19 +504,22 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     tg_file = await doc.get_file()
     data = await tg_file.download_as_bytearray()
+    raw_bytes = bytes(data)
+
+    rel_path = None
+    if config.SHELL_ENABLED:
+        try:
+            rel_path = workspace.save_upload(raw_bytes, filename)
+        except Exception as e:
+            logger.warning(f"Failed to auto-save upload '{filename}' to workspace: {e}")
 
     try:
-        message_dict = process_file(bytes(data), filename, caption)
+        message_dict = process_file(raw_bytes, filename, caption, workspace_rel_path=rel_path)
     except ValueError as e:
         await _reply_with_retry(update, str(e))
         return
 
-    user_id = update.effective_user.id
-    session = get_session(user_id)
-    session.append(message_dict)
-    response = await llm.generate_response(session)
-    session.append({"role": "assistant", "content": response})
-    await _send_long(update, response)
+    await _reply_and_llm(update, context, message_dict)
 
 
 # ─── Dynamic skill shortcut handler ───────────────────────────────────────────
@@ -478,8 +543,37 @@ async def post_init(app):
 
     logger.info(f"Loaded {len(persona_mgr.list_all())} personas, {len(skill_mgr.list_all())} skills.")
 
+    # Connect ToolRegistry to LLM
+    llm.set_tool_registry(tool_registry)
+
+    # Initialize Native Shell & Workspace Tools if enabled
+    if config.SHELL_ENABLED:
+        workspace.ensure()
+        cl0w_root = os.path.realpath(os.path.dirname(__file__))
+        extra_deny = [
+            os.path.join(cl0w_root, ".env"),
+            os.path.join(cl0w_root, "mcp.json"),
+        ]
+        tool_registry.register_native_tool(
+            ShellExecTool(
+                workspace=workspace,
+                default_timeout=config.SHELL_TIMEOUT,
+                max_output=config.SHELL_MAX_OUTPUT,
+                use_sandbox=(config.SHELL_SANDBOX != "off"),
+                extra_deny_read=extra_deny,
+            )
+        )
+        tool_registry.register_native_tool(FsReadTool(workspace))
+        tool_registry.register_native_tool(FsWriteTool(workspace))
+        tool_registry.register_native_tool(FsListTool(workspace))
+        tool_registry.register_native_tool(SendFileTool(workspace))
+
+        # Launch background venv check/setup
+        await venv_mgr.ensure_venv_background()
+        logger.info(f"Native workspace tools initialized at {workspace.root}")
+
     manager = await mcp_module.init_mcp(config.MCP_CONFIG_PATH)
-    llm.set_mcp_manager(manager)
+    tool_registry.set_mcp_manager(manager)
 
     # Register bot commands for Telegram menu
     commands = [
