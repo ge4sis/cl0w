@@ -7,7 +7,7 @@ import httpx
 from openai import AsyncOpenAI
 
 import config
-from compaction import estimate_tokens, prune_past_tool_outputs, compact_session_history
+from compaction import estimate_tokens, prune_past_tool_outputs, compact_session_history, normalize_message
 
 if TYPE_CHECKING:
     from tools.registry import ToolRegistry
@@ -108,6 +108,11 @@ async def generate_response(
       5. finish_reason: length and silent failure safeguards
     """
     try:
+        # 0. Ensure all messages are standard dicts (converts any ChatCompletionMessage objects)
+        for idx in range(len(messages)):
+            if not isinstance(messages[idx], dict):
+                messages[idx] = normalize_message(messages[idx])
+
         # 1. Level 1 Auto-Compaction: prune past verbose tool outputs
         prune_past_tool_outputs(messages)
 
@@ -152,7 +157,7 @@ async def generate_response(
         ):
             loop_count += 1
             tool_calls = response.choices[0].message.tool_calls
-            messages.append(response.choices[0].message)
+            messages.append(normalize_message(response.choices[0].message))
 
             for tc in tool_calls:
                 tool_name = tc.function.name
@@ -229,4 +234,13 @@ async def generate_response(
             except Exception as retry_err:
                 logger.error(f"[LLM Emergency Retry Failed] {retry_err}")
 
-        return f"LLM 서버 연결 또는 처리 오류가 발생했습니다: {err_msg}\n\nLM Studio 실행 여부와 콘솔을 확인해주세요."
+        is_conn_error = any(
+            err_type in type(e).__name__.lower()
+            for err_type in ["connect", "timeout", "network", "apiconnection"]
+        ) or any(
+            err_phrase in err_msg.lower()
+            for err_phrase in ["connection refused", "connecterror", "failed to connect", "timed out"]
+        )
+        if is_conn_error:
+            return f"LLM 서버 연결 오류가 발생했습니다: {err_msg}\n\nLM Studio 실행 여부와 포트 설정을 확인해주세요."
+        return f"요청 처리 중 오류가 발생했습니다: {err_msg}"

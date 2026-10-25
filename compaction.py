@@ -6,7 +6,32 @@ from typing import Any, List, Optional
 logger = logging.getLogger(__name__)
 
 
-def estimate_tokens(messages: List[dict], tools: Optional[List[dict]] = None) -> int:
+def normalize_message(msg: Any) -> dict:
+    """Ensure message is a standard dictionary (e.g. converting Pydantic ChatCompletionMessage)."""
+    if isinstance(msg, dict):
+        return msg
+    if hasattr(msg, "model_dump"):
+        return msg.model_dump(exclude_none=True)
+    if hasattr(msg, "dict"):
+        return msg.dict(exclude_none=True)
+    if hasattr(msg, "__dict__"):
+        return vars(msg)
+    return dict(msg)
+
+
+def _get_role(msg: Any) -> Optional[str]:
+    if isinstance(msg, dict):
+        return msg.get("role")
+    return getattr(msg, "role", None)
+
+
+def _get_content(msg: Any) -> Any:
+    if isinstance(msg, dict):
+        return msg.get("content")
+    return getattr(msg, "content", None)
+
+
+def estimate_tokens(messages: List[Any], tools: Optional[List[dict]] = None) -> int:
     """
     Fast and accurate heuristic token estimator for multilingual (Korean + English) messages and tools.
     Byte-Pair Encoding (BPE) uses ~1.8 tokens per Korean syllable and ~0.28 tokens per ASCII character.
@@ -15,14 +40,18 @@ def estimate_tokens(messages: List[dict], tools: Optional[List[dict]] = None) ->
 
     for msg in messages:
         total_tokens += 4  # Per-message overhead (role, framing)
-        content = msg.get("content") or ""
+        content = _get_content(msg) or ""
         if isinstance(content, str):
             korean_chars = len(re.findall(r"[\uac00-\ud7a3]", content))
             other_chars = len(content) - korean_chars
             total_tokens += int(korean_chars * 1.8 + other_chars * 0.28)
 
         # Handle tool calls in assistant messages
-        tool_calls = msg.get("tool_calls")
+        if isinstance(msg, dict):
+            tool_calls = msg.get("tool_calls")
+        else:
+            tool_calls = getattr(msg, "tool_calls", None)
+
         if tool_calls and isinstance(tool_calls, list):
             for tc in tool_calls:
                 func = getattr(tc, "function", None)
@@ -89,17 +118,22 @@ def _slim_search_json(raw_text: str) -> Optional[str]:
     return "\n".join(lines)
 
 
-def prune_past_tool_outputs(messages: List[dict], max_content_chars: int = 1000) -> bool:
+def prune_past_tool_outputs(messages: List[Any], max_content_chars: int = 1000) -> bool:
     """
     Level 1 Auto-Compaction:
     Finds large 'role: tool' results from PRIOR turns (before the last user message)
     and replaces them with compact summaries/indexes.
     Current turn tool outputs are kept 100% intact so the LLM can synthesize them.
     """
+    # Normalize messages in-place so all items become standard mutable dicts
+    for idx in range(len(messages)):
+        if not isinstance(messages[idx], dict):
+            messages[idx] = normalize_message(messages[idx])
+
     # Locate the index of the latest user message
     last_user_idx = -1
     for idx, msg in enumerate(messages):
-        if msg.get("role") == "user":
+        if _get_role(msg) == "user":
             last_user_idx = idx
 
     if last_user_idx <= 0:
@@ -108,8 +142,8 @@ def prune_past_tool_outputs(messages: List[dict], max_content_chars: int = 1000)
     pruned_any = False
     for idx in range(last_user_idx):
         msg = messages[idx]
-        if msg.get("role") == "tool":
-            content = msg.get("content")
+        if _get_role(msg) == "tool":
+            content = _get_content(msg)
             if isinstance(content, str) and len(content) > max_content_chars:
                 slimmed = _slim_search_json(content)
                 if not slimmed:
@@ -121,7 +155,10 @@ def prune_past_tool_outputs(messages: List[dict], max_content_chars: int = 1000)
                         f"... [중략: 총 {len(content):,}자 중 핵심 메타데이터만 보존] ...\n\n"
                         f"{tail}"
                     )
-                msg["content"] = slimmed
+                if isinstance(msg, dict):
+                    msg["content"] = slimmed
+                else:
+                    setattr(msg, "content", slimmed)
                 pruned_any = True
                 logger.info(f"[Compaction] Pruned past tool message at index {idx} ({len(content)} -> {len(slimmed)} chars)")
 
@@ -129,7 +166,7 @@ def prune_past_tool_outputs(messages: List[dict], max_content_chars: int = 1000)
 
 
 async def compact_session_history(
-    messages: List[dict],
+    messages: List[Any],
     context_limit: int,
     target_ratio: float = 0.35,
     client: Any = None,
@@ -144,11 +181,16 @@ async def compact_session_history(
     Compacts:
       - All intermediate turns into a concise structured summary.
     """
+    # Normalize in-place
+    for idx in range(len(messages)):
+        if not isinstance(messages[idx], dict):
+            messages[idx] = normalize_message(messages[idx])
+
     if len(messages) <= 4:
         return False
 
     # Find the boundary for recent turns: keep the last 2 user messages and their follow-ups
-    user_indices = [i for i, m in enumerate(messages) if m.get("role") == "user"]
+    user_indices = [i for i, m in enumerate(messages) if _get_role(m) == "user"]
     if len(user_indices) < 2:
         return False
 
@@ -164,8 +206,8 @@ async def compact_session_history(
     # Build conversation digest for older messages
     text_chunks = []
     for m in older_messages:
-        role = m.get("role")
-        content = m.get("content")
+        role = _get_role(m)
+        content = _get_content(m)
         if role in ("user", "assistant") and isinstance(content, str) and content.strip():
             text_chunks.append(f"{role.upper()}: {content.strip()[:600]}")
 

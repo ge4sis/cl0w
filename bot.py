@@ -391,8 +391,10 @@ async def _run_skill(
     # Build context string from last assistant message for context-only skills
     context_text = ""
     for msg in reversed(session):
-        if msg["role"] == "assistant" and isinstance(msg["content"], str):
-            context_text = msg["content"]
+        role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
+        content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
+        if role == "assistant" and isinstance(content, str):
+            context_text = content
             break
 
     rendered = skill_mgr.render(skill_name, skill_args, context=context_text)
