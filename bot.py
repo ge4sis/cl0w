@@ -108,7 +108,10 @@ async def _reply_with_retry(update, *args, **kwargs):
 
 async def _send_long(update: Update, text: str):
     if not text or not text.strip():
-        logger.warning("Attempted to send empty or whitespace-only text. Skipping.")
+        logger.warning("Attempted to send empty or whitespace-only text.")
+        await _reply_with_retry(
+            update, "⚠️ 모델로부터 빈 응답이 반환되었습니다. 다시 질문하시거나 /new 로 세션을 초기화해주세요."
+        )
         return
     MAX = 4050
     for i in range(0, len(text), MAX):
@@ -140,7 +143,13 @@ async def _keep_typing(context: ContextTypes.DEFAULT_TYPE, chat_id: int, stop_ev
             pass
 
 
-async def _reply_and_llm(update: Update, context: ContextTypes.DEFAULT_TYPE, message_dict: dict):
+async def _reply_and_llm(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    message_dict: dict,
+    profiles: list[str] | None = None,
+    allowed_tools: list[str] | None = None,
+):
     """Append message_dict to session, call LLM with typing keepalive, send response."""
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
@@ -155,7 +164,11 @@ async def _reply_and_llm(update: Update, context: ContextTypes.DEFAULT_TYPE, mes
     token = set_tool_context(tool_ctx)
 
     try:
-        response = await llm.generate_response(session)
+        response = await llm.generate_response(
+            session,
+            profiles=profiles,
+            allowed_tools=allowed_tools,
+        )
     finally:
         stop_typing.set()
         typing_task.cancel()
@@ -390,7 +403,16 @@ async def _run_skill(
         )
         return
 
-    await _reply_and_llm(update, context, {"role": "user", "content": rendered})
+    skill = skill_mgr.get(skill_name)
+    tools_list = skill.tools if skill else None
+    profiles = None if tools_list else ["core"]
+    await _reply_and_llm(
+        update,
+        context,
+        {"role": "user", "content": rendered},
+        profiles=profiles,
+        allowed_tools=tools_list,
+    )
 
 
 # ─── /mcp ─────────────────────────────────────────────────────────────────────
@@ -446,11 +468,22 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Text handler ─────────────────────────────────────────────────────────────
 
+FINANCE_KEYWORDS = (
+    "주가", "주식", "공시", "dart", "재무", "금리", "환율", "fred",
+    "실적", "증시", "코스피", "코스닥", "매출", "영업이익", "상장", "배당"
+)
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update):
         return
     user_text = update.message.text
-    await _reply_and_llm(update, context, {"role": "user", "content": user_text})
+    lowered = user_text.lower()
+    if any(k in lowered for k in FINANCE_KEYWORDS):
+        profiles = ["core", "finance"]
+    else:
+        profiles = ["core"]
+    await _reply_and_llm(update, context, {"role": "user", "content": user_text}, profiles=profiles)
 
 
 # ─── Photo handler ────────────────────────────────────────────────────────────
@@ -487,7 +520,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         content.append({"type": "text", "text": default_prompt})
     content.append({"type": "image_url", "image_url": {"url": image_url}})
 
-    await _reply_and_llm(update, context, {"role": "user", "content": content})
+    await _reply_and_llm(update, context, {"role": "user", "content": content}, profiles=["core"])
 
 
 # ─── Document handler ─────────────────────────────────────────────────────────
@@ -519,7 +552,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _reply_with_retry(update, str(e))
         return
 
-    await _reply_and_llm(update, context, message_dict)
+    await _reply_and_llm(update, context, message_dict, profiles=["core"])
 
 
 # ─── Dynamic skill shortcut handler ───────────────────────────────────────────

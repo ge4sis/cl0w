@@ -10,6 +10,7 @@ class Skill:
     description: str
     usage: str
     template: str
+    tools: Optional[list[str]] = None
 
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -31,6 +32,7 @@ def _parse_md(path: str) -> Optional[Skill]:
     body = raw[match.end():].strip()
 
     name = description = usage = ""
+    tools: Optional[list[str]] = None
     for line in front.splitlines():
         if ":" in line:
             k, _, v = line.partition(":")
@@ -41,11 +43,14 @@ def _parse_md(path: str) -> Optional[Skill]:
                 description = v
             elif k == "usage":
                 usage = v
+            elif k == "tools":
+                val = v.strip("[]")
+                tools = [t.strip() for t in val.split(",") if t.strip()]
 
     stem = os.path.splitext(os.path.basename(path))[0]
     name = name or stem
     usage = usage or f"/{name} <input>"
-    return Skill(name=name, description=description, usage=usage, template=body)
+    return Skill(name=name, description=description, usage=usage, template=body, tools=tools)
 
 
 class SkillManager:

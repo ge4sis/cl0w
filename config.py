@@ -20,6 +20,9 @@ LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "local-model")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 LLM_MAX_TOOL_LOOPS = int(os.getenv("LLM_MAX_TOOL_LOOPS", "15"))
+LM_STUDIO_CONTEXT_SIZE = int(os.getenv("LM_STUDIO_CONTEXT_SIZE", "131072"))
+COMPACTION_THRESHOLD_RATIO = float(os.getenv("COMPACTION_THRESHOLD_RATIO", "0.70"))
+COMPACTION_TARGET_RATIO = float(os.getenv("COMPACTION_TARGET_RATIO", "0.35"))
 
 # cl0w paths
 MCP_CONFIG_PATH = os.getenv("MCP_CONFIG_PATH", "./mcp.json")

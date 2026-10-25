@@ -272,9 +272,13 @@ class MCPManager:
         await self.load_and_start_all()
 
     def get_all_openai_tools(self) -> list:
+        return self.get_openai_tools_for_servers(None)
+
+    def get_openai_tools_for_servers(self, server_labels: Optional[List[str]] = None) -> list:
         tools = []
-        for client in self.clients.values():
-            tools.extend(client.get_openai_tools_schema())
+        for label, client in self.clients.items():
+            if server_labels is None or label in server_labels:
+                tools.extend(client.get_openai_tools_schema())
         return tools
 
     def get_status(self) -> list[dict]:
